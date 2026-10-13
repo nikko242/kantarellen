@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches-ignore: [kartdata]
   pull_request:
+  workflow_dispatch:   # publicera om med ny kartdata (se kantarell/publicera.py)
 
 permissions:
   contents: read
@@ -20,16 +22,21 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
 
-  # Publiceras bara från main och bara när testerna gått igenom
+  # Publiceras bara från main och bara när testerna gått igenom. Kartdatan ligger på grenen kartdata.
   publicera:
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: kartdata
+          path: web/data
+      - run: rm -rf web/data/.git
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

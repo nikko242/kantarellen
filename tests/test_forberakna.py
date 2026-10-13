@@ -1,4 +1,5 @@
 """Rutnätet, kodningen av block och förberäkningen från början till slut med demodata."""
+import gzip
 import json
 
 import numpy as np
@@ -28,13 +29,18 @@ def test_forberakningen_med_demodata(tmp_path):
     n = Rutnat.kring(476000, 7002000, 481000, 7007000)
     ut = berakna(n, demodata(n))
     meta = skriv(n, ut, [{"namn": "test", "vad": "", "datum": "", "licens": "", "url": ""}], tmp_path)
-    assert (tmp_path / "poang.png").exists()
     assert meta["statistik"]["skogsrutor"] > 0
-    assert len(list((tmp_path / "block").glob("*.bin"))) == meta["statistik"]["block"]
+    assert len(list((tmp_path / "block").glob("*.bin.gz"))) == meta["statistik"]["block"]
     assert json.loads((tmp_path / "meta.json").read_text(encoding="utf-8"))["rutnat"]["ruta_m"] == 50
     # Varje block är fullt: 100 × 100 rutor × 14 byte
-    for b in (tmp_path / "block").glob("*.bin"):
-        assert b.stat().st_size == BLOCK * BLOCK * len(FALT)
+    for b in (tmp_path / "block").glob("*.bin.gz"):
+        assert len(gzip.decompress(b.read_bytes())) == BLOCK * BLOCK * len(FALT)
+    # Tiles finns på alla zoomnivåer och är giltiga PNG-filer
+    tiles = meta["tiles"]
+    for z in range(tiles["minzoom"], tiles["maxzoom"] + 1):
+        filer = list((tmp_path / "tiles" / str(z)).rglob("*.png"))
+        assert filer and all(f.read_bytes()[:8] == bytes.fromhex("89504e470d0a1a0a") for f in filer)
+    assert sum(1 for _ in (tmp_path / "tiles").rglob("*.png")) == meta["statistik"]["tiles"]
 
 
 def test_skog_kraver_trad_eller_avverkning_och_inte_vatten():
@@ -53,3 +59,18 @@ def test_rangen_gor_guld_av_de_basta_tio_procenten():
     assert r[0, 0] == 0.9 and r[0, 95] == 1.0
     rgba = farg(r)
     assert rgba[0, 95, 0] == 255 and rgba[0, -1, 3] == 0
+
+
+def test_tatort_raknas_inte_som_skog():
+    from kantarell.kallor import arSkog, tatort
+    bebyggd = np.zeros((20, 20))
+    bebyggd[2:7, 2:7] = 0.6          # ett villaområde: hälften av marken är hus, vägar och tomter
+    bebyggd[15, 15] = 1.0            # ett ensamt hus i skogen
+    t = tatort(bebyggd)
+    assert t[4, 4] and t[2, 2]       # mitt i och i kanten av villaområdet
+    assert not t[15, 15]             # ett hus gör ingen tätort
+    assert not t[12, 4]              # skogen intill
+    data = {"tradhojd": np.full((20, 20), 15.0), "ar_sedan_avverkning": np.full((20, 20), np.nan),
+            "fukt": np.full((20, 20), 2.0), "tatort": t}
+    skog = arSkog(data)
+    assert not skog[4, 4] and skog[15, 15] and skog[12, 4]

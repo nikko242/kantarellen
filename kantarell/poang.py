@@ -117,3 +117,41 @@ def bedom(r: Ruta) -> Bedomning:
     begransas = lagst_namn if lagst < BEGRANSANDE and lagst < medel else None
     poang = min(medel, lagst) if begransas else medel
     return Bedomning(poang=round(poang, 3), faktorer=v, begransas_av=begransas, saknas=[k for k, x in v.items() if x is None])
+
+
+# ---------- Samma regler för hela rutnätet på en gång ----------
+# bedom() går ruta för ruta och är lätt att läsa och testa; för ett helt län (miljontals rutor) räknas samma regler
+# med numpy. Testet test_falten_ger_samma_svar_som_bedom håller dem lika.
+
+def _ramp(x, fran: float, till: float):
+    import numpy as np
+    return np.clip((x - fran) / (till - fran), 0.0, 1.0)
+
+
+def _tabell(kod, tabell: dict[int, tuple[str, float]]):
+    import numpy as np
+    ut = np.full(kod.shape, np.nan)
+    for k, (_, v) in tabell.items():
+        ut[kod == k] = v
+    return ut
+
+
+def bedom_falt(d: dict) -> dict:
+    """bedom() för arrayer: d har gran, tall, bjork, tradhojd, ar_sedan_avverkning, jordart, fukt och hojd (NaN = saknas).
+    Ger poang och f_<faktor> som arrayer (NaN = saknas; poang är NaN där rutan inte är skog)."""
+    import numpy as np
+    gran, tall, bjork = d["gran"], d["tall"], d["bjork"]
+    ts = _ramp(np.nan_to_num(gran) + np.nan_to_num(tall), 20, 80)
+    ts = np.where((bjork >= 5) & (bjork <= 30), np.minimum(1.0, ts + 0.1), ts)
+    ts = np.where(np.isnan(gran) & np.isnan(tall), np.nan, ts)
+    avv = d["ar_sedan_avverkning"]
+    al = np.where(avv < 30, np.where(avv < 10, 0.0, 0.3), _ramp(d["tradhojd"], 5, 15))
+    f = {"tradslag": ts, "alder": al, "jordart": _tabell(d["jordart"], JORDARTER), "fukt": _tabell(d["fukt"], FUKTKLASSER),
+         "hojd": _ramp(d["hojd"], 900, 700)}
+    summa = sum(np.nan_to_num(f[k]) * VIKTER[k] for k in f)
+    vikt = sum(np.where(np.isnan(f[k]), 0.0, VIKTER[k]) for k in f)
+    medel = summa / vikt
+    lagst = np.fmin.reduce([f[k] for k in f])
+    poang = np.where((lagst < BEGRANSANDE) & (lagst < medel), lagst, medel)
+    poang = np.where(np.isnan(ts), np.nan, np.round(poang, 3))
+    return {"poang": poang, **{f"f_{k}": v for k, v in f.items()}}
