@@ -37,7 +37,10 @@ async function rutaVid(lngLat) {
   const bx = Math.floor(kol / n.block), by = Math.floor(rad / n.block);
   const nyckel = `${bx}_${by}`;
   if (!blockCache.has(nyckel)) {
-    blockCache.set(nyckel, fetch(`data/block/${nyckel}.bin`).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
+    // Blocken är gzip-komprimerade filer (inte Content-Encoding), så de packas upp här
+    blockCache.set(nyckel, fetch(`data/block/${nyckel}.bin.gz`)
+      .then((r) => (r.ok ? new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer() : null))
+      .catch(() => null));
   }
   const buf = await blockCache.get(nyckel);
   if (!buf) return null;
@@ -52,12 +55,12 @@ async function rutaVid(lngLat) {
 }
 
 const pct = (x) => `${Math.round(x * 100)} %`;
-// Var rutan hamnar bland kommunens skogsrutor; kartans färger går efter samma rangordning
+// Var rutan hamnar bland områdets skogsrutor; kartans färger går efter samma rangordning
 function placering(p) {
   const s = meta.skala;
   if (!s?.poang?.length) return '';
-  for (let i = s.poang.length - 1; i >= 0; i--) if (p >= s.poang[i]) return `<strong>Bland de ${100 - s.percentiler[i]} % bästa</strong> i kommunen`;
-  return 'Under medel i kommunen';
+  for (let i = s.poang.length - 1; i >= 0; i--) if (p >= s.poang[i]) return `<strong>Bland de ${100 - s.percentiler[i]} % bästa</strong> i ${meta.omrade}`;
+  return `Under medel i ${meta.omrade}`;
 }
 function forklaring(v) {
   if (!v || v.poang === null) return '<div class="forklaring"><p>Ingen skog här, eller data saknas.</p></div>';
@@ -116,7 +119,7 @@ function exportera() {
 
 function omKartan() {
   const k = meta.kallor.map((s) => `<li><strong>${s.namn}</strong> (${s.vad}), ${s.datum}, licens: ${s.licens}${s.url ? `, <a href="${s.url}" target="_blank" rel="noopener">källa</a>` : ''}${s.not ? `<br><span class="dampad">${s.not}</span>` : ''}</li>`).join('');
-  $('omtext').innerHTML = `<p>Sannolikheten är en poäng ur regler om var kantareller brukar växa: trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Färgerna går efter rangordning: guld är de 10 % bästa skogsrutorna i kommunen. Tryck på kartan för att se varför ett område bedöms som det gör.</p>
+  $('omtext').innerHTML = `<p>Sannolikheten är en poäng ur regler om var kantareller brukar växa: trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Färgerna går efter rangordning: guld är de 10 % bästa skogsrutorna i ${meta.omrade}. Tryck på kartan för att se varför ett område bedöms som det gör.</p>
     <p class="dampad">Beräknad ${meta.skapad}. ${meta.statistik.skogsrutor.toLocaleString('sv-SE')} skogsrutor om ${meta.rutnat.ruta_m} m.</p>
     <h3>Källor</h3><ul>${k}</ul>
     <p class="dampad">Dina fynd sparas bara i den här webbläsaren och skickas aldrig någonstans.</p>`;
@@ -126,11 +129,11 @@ function omKartan() {
 // ---------- Kartan ----------
 async function start() {
   meta = await (await fetch('data/meta.json')).json();
-  const h = meta.bild.hornen;
+  const t = meta.tiles;
   karta = new maplibregl.Map({
     container: 'karta',
     style: 'https://tiles.openfreemap.org/styles/liberty',   // OpenFreeMap: öppen bakgrundskarta utan nyckel
-    bounds: [h[3], h[1]],
+    bounds: [[t.bounds[0], t.bounds[1]], [t.bounds[2], t.bounds[3]]],
     fitBoundsOptions: { padding: 20 },
   });
   karta.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -140,7 +143,9 @@ async function start() {
   geo.on('error', () => visaStatus('Positionen kunde inte hämtas'));
 
   karta.on('load', () => {
-    karta.addSource('poang', { type: 'image', url: `data/${meta.bild.fil}`, coordinates: h });
+    // Tiles till zoom 11; närmare förstoras de (rutorna är ändå 50 m)
+    const bas = new URL('.', location.href).href;
+    karta.addSource('poang', { type: 'raster', tiles: [bas + t.url], tileSize: 256, minzoom: t.minzoom, maxzoom: t.maxzoom, bounds: t.bounds });
     // Under vägar och ortnamn, så att kartan går att läsa genom poängen
     const forsta = karta.getStyle().layers.find((l) => l.type === 'symbol')?.id;
     karta.addLayer({ id: 'poang', type: 'raster', source: 'poang', paint: { 'raster-opacity': 0.7, 'raster-resampling': 'nearest' } }, forsta);

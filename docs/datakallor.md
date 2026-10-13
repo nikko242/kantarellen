@@ -1,4 +1,6 @@
-# Datakällor för kantarellprototypen – Östersunds kommun (2380)
+# Datakällor för kantarellprototypen – Östersunds kommun (2380) och Jämtlands län (23)
+
+> **Varv 2 (2026-10-13):** kartan gäller hela Jämtlands län. Ändringarna mot varv 1 står i avsnittet *Varv 2: Jämtlands län* längst ned. Resten av dokumentet är undersökningen från varv 1, för kommunen.
 
 Undersökt 2026-10-13 med små anrop (HEAD, katalogvisningar, GetCapabilities och små bbox-frågor). Inga filer över cirka 20 MB har laddats ner. Storlekar på stora filer kommer från `Content-Length` eller från zip-arkivens centralkatalog, som jag läste med HTTP Range.
 
@@ -256,3 +258,21 @@ Skogsstyrelsens ArcGIS-server `https://geodata.skogsstyrelsen.se/arcgis/rest/ser
 - GBIF:s asynkrona nedladdningar
 
 Inget av detta behövs för de rekommenderade vägarna.
+
+
+## Varv 2: Jämtlands län
+
+| Källa | Väg för länet | Storlek |
+|---|---|---|
+| Gräns | OpenStreetMap, relationen 52826 (Jämtlands län) | ≈ 1 MB |
+| Trädslag | SLU Skogskarta via `/vsicurl/`, läst i band om 25 km och parallellt | läses direkt |
+| Trädhöjd | SGD2 HGV via `/vsicurl/`, på samma sätt | läses direkt |
+| Avverkningar | Skogsstyrelsens tjänst, `Lannr='23'`: id:n först, sedan omgångar om 200 (85 953 ytor 2026-10-13) | ≈ 430 anrop |
+| Markfuktighet | Länsfilen `sksSLUMarkfuktighet_klassad23` (2 m, rader utan översikter): läses lokalt i band, och den vanligaste klassen per ruta räknas i numpy | 742 MB zip |
+| Jordarter | Hela landet som GeoPackage (avsnitt 4b), läst med bbox ur lagret `grundlager` (2 956 837 ytor i landet). API:t hade krävt omkring 700 sidor | 3,4 GB zip, 8,7 GB gpkg |
+| Höjd | Copernicus GLO-30, alla 1°-rutor som täcker länet (rutor utan land hoppas över) | läses direkt |
+| Bebyggd mark | **NMD 2023 basskikt v2.1** (Naturvårdsverket, CC0): `https://geodata.naturvardsverket.se/nedladdning/marktacke/NMD2023/Basskikt_v2_x/NMD2023_basskikt_v2_1.zip`. 10 m, EPSG:3006, kanterna på jämna 50 m. Klasserna står i `NMD2023bas_v2_1.tif.vat.dbf`: 51 Byggnad, 52 Anlagd mark (ej byggnad eller väg/järnväg) och 53 Väg eller järnväg | 2,5 GB zip, 10,8 GB tif |
+
+**Tätort (DO-9 i Saida):** andelen bebyggd mark (51, 52 och 53, alltså hus, anlagd mark och vägar) räknas per ruta och medelvärdesbildas över 250 × 250 m. En ruta där minst 20 % av marken är bebyggd räknas inte som skog. Valet prövades kring Östersund: utan vägarna blev tätorten 12,6 km², eftersom villaområdena nästan bara har hus och gator (Torvalla: 19 % hus och anlagd mark), och med vägarna 28,6 km², nära SCB:s tätortsyta. En skogsbilväg utan hus ger högst omkring 15 % (99:e percentilen), och ett ensamt hus gör ingen tätort.
+
+**Kartdatan** blir för stor för en enda bild: den delas i tiles (zoom 5–11) och blocken komprimeras med gzip. Se README.

@@ -63,3 +63,32 @@ def test_ramp_at_bada_hallen():
     assert ramp(10, 5, 15) == 0.5
     assert ramp(800, 900, 700) == 0.5
     assert ramp(0, 5, 15) == 0.0 and ramp(20, 5, 15) == 1.0
+
+
+def test_falten_ger_samma_svar_som_bedom():
+    import numpy as np
+
+    from kantarell.poang import bedom_falt
+    rng = np.random.default_rng(1)
+    n = 5000
+    def med_luckor(v, andel=0.15):
+        return np.where(rng.random(n) < andel, np.nan, v)
+    d = {"gran": med_luckor(rng.integers(0, 100, n).astype(float)), "tall": med_luckor(rng.integers(0, 60, n).astype(float)),
+         "bjork": med_luckor(rng.integers(0, 50, n).astype(float)), "tradhojd": med_luckor(rng.integers(0, 30, n).astype(float)),
+         "ar_sedan_avverkning": med_luckor(rng.integers(0, 60, n).astype(float), 0.7),
+         "jordart": med_luckor(rng.integers(1, 10, n).astype(float)), "fukt": med_luckor(rng.integers(1, 6, n).astype(float)),
+         "hojd": med_luckor(rng.integers(200, 1100, n).astype(float))}
+    ut = bedom_falt(d)
+    for i in range(n):
+        v = {k: (None if np.isnan(a[i]) else a[i]) for k, a in d.items()}
+        for k in ("ar_sedan_avverkning", "jordart", "fukt"):
+            v[k] = None if v[k] is None else int(v[k])
+        b = bedom(Ruta(**v))
+        assert (b.poang is None) == np.isnan(ut["poang"][i])
+        if b.poang is not None:
+            # avrundningen till tre decimaler kan slå åt olika håll när summan räknas i en annan ordning
+            assert b.poang == pytest.approx(ut["poang"][i], abs=0.0011)
+        for k, x in b.faktorer.items():
+            assert (x is None) == np.isnan(ut[f"f_{k}"][i])
+            if x is not None:
+                assert x == pytest.approx(ut[f"f_{k}"][i])

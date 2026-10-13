@@ -7,6 +7,7 @@ så kontrollen visar en riktning, inte en träffsäkerhet.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 
@@ -43,8 +44,8 @@ def poang_vid(meta: dict, x: float, y: float, cache: dict) -> float | None:
         return None
     nyckel = f"{kol // BLOCK}_{rad // BLOCK}"
     if nyckel not in cache:
-        p = WEB / "block" / f"{nyckel}.bin"
-        cache[nyckel] = p.read_bytes() if p.exists() else None
+        p = WEB / "block" / f"{nyckel}.bin.gz"
+        cache[nyckel] = gzip.decompress(p.read_bytes()) if p.exists() else None
     b = cache[nyckel]
     if b is None:
         return None
@@ -54,8 +55,8 @@ def poang_vid(meta: dict, x: float, y: float, cache: dict) -> float | None:
 
 def alla_poang(meta: dict) -> np.ndarray:
     v = []
-    for p in (WEB / "block").glob("*.bin"):
-        a = np.frombuffer(p.read_bytes(), dtype=np.uint8).reshape(-1, len(FALT))[:, 0]
+    for p in (WEB / "block").glob("*.bin.gz"):
+        a = np.frombuffer(gzip.decompress(p.read_bytes()), dtype=np.uint8).reshape(-1, len(FALT))[:, 0]
         v.append(a[a != SAKNAS] / 250)
     return np.concatenate(v)
 
@@ -64,13 +65,12 @@ def main() -> None:
     from pyproj import Transformer
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     meta = json.loads((WEB / "meta.json").read_text(encoding="utf-8"))
-    h = meta["bild"]["hornen"]
-    lista = fynd(h[0][0], h[2][1], h[1][0], h[0][1])
+    lista = fynd(*meta["tiles"]["bounds"])
     t = Transformer.from_crs("EPSG:4326", "EPSG:3006", always_xy=True)
     cache: dict = {}
     vid = [p for lon, lat, _ in lista if (p := poang_vid(meta, *t.transform(lon, lat), cache)) is not None]
     alla = alla_poang(meta)
-    print(f"Fynd i kartans område: {len(lista)}, varav {len(vid)} i en skogsruta.")
+    print(f"Fynd i kartans område ({meta['omrade']}): {len(lista)}, varav {len(vid)} i en skogsruta.")
     if vid:
         hog = float(np.quantile(alla, 0.7))
         print(f"Medelpoäng: fynden {np.mean(vid):.2f}, alla skogsrutor {alla.mean():.2f}.")
