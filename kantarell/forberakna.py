@@ -49,16 +49,29 @@ def berakna(nat: Rutnat, data: dict[str, np.ndarray], innanfor: np.ndarray | Non
     return ut
 
 
-FARGER = [(0.0, (120, 120, 120, 70)), (0.4, (170, 160, 110, 130)), (0.7, (230, 170, 30, 190)), (1.0, (255, 196, 0, 230))]
+# Färgen går efter rangordning bland kommunens skogsrutor (beslut i Saida, KS-5): guld är de bästa 10 %.
+# Poängen är densamma; skalan gör att kartan skiljer ut de bästa ställena även där nästan all skog får hög poäng.
+FARGER = [(0.0, (120, 120, 120, 60)), (0.5, (165, 158, 120, 110)), (0.75, (215, 175, 70, 160)), (0.9, (240, 175, 20, 200)), (1.0, (255, 196, 0, 235))]
+TROSKLAR = [50, 75, 90]   # percentiler som webbappen visar ("bland de 10 % bästa")
 
 
-def farg(poang: np.ndarray) -> np.ndarray:
-    """Poäng till RGBA: grått (osannolikt) till guld (mest sannolikt); genomskinligt där det inte är skog."""
-    rgba = np.zeros(poang.shape + (4,), dtype=np.uint8)
+def rang(poang: np.ndarray) -> np.ndarray:
+    """Varje rutas plats bland skogsrutorna, 0 (sämst) till 1 (bäst); NaN där det inte är skog."""
+    ut = np.full(poang.shape, np.nan)
     ok = ~np.isnan(poang)
+    if ok.any():
+        sorterad = np.sort(poang[ok])
+        ut[ok] = np.searchsorted(sorterad, poang[ok], side="right") / sorterad.size
+    return ut
+
+
+def farg(rang_: np.ndarray) -> np.ndarray:
+    """Rang till RGBA: grått (sämst) till guld (de bästa 10 %); genomskinligt där det inte är skog."""
+    rgba = np.zeros(rang_.shape + (4,), dtype=np.uint8)
+    ok = ~np.isnan(rang_)
     xs = [p for p, _ in FARGER]
     for k in range(4):
-        rgba[..., k][ok] = np.interp(poang[ok], xs, [c[k] for _, c in FARGER]).astype(np.uint8)
+        rgba[..., k][ok] = np.interp(rang_[ok], xs, [c[k] for _, c in FARGER]).astype(np.uint8)
     return rgba
 
 
@@ -83,7 +96,7 @@ def skriv(nat: Rutnat, ut: dict[str, np.ndarray], kallor: list[dict], ut_dir: Pa
         antal += 1
 
     # Kartbilden: RGBA i EPSG:3006, omprojicerad till Web Mercator för MapLibre
-    rgba = farg(ut["poang"]).transpose(2, 0, 1)
+    rgba = farg(rang(ut["poang"])).transpose(2, 0, 1)
     dst_t, w, h = calculate_default_transform("EPSG:3006", "EPSG:3857", nat.bredd, nat.hojd, *nat.bounds)
     dst = np.zeros((4, h, w), dtype=np.uint8)
     for k in range(4):
@@ -103,6 +116,7 @@ def skriv(nat: Rutnat, ut: dict[str, np.ndarray], kallor: list[dict], ut_dir: Pa
         "rutnat": {"crs": "EPSG:3006", "x0": nat.x0, "y0": nat.y0, "bredd": nat.bredd, "hojd": nat.hojd, "ruta_m": RUTA_M, "block": BLOCK},
         "bild": {"fil": "poang.png", "hornen": [[lon0, lat1], [lon1, lat1], [lon1, lat0], [lon0, lat0]]},
         "kallor": kallor,
+        "skala": {"percentiler": TROSKLAR, "poang": [round(float(np.percentile(poang, q)), 3) for q in TROSKLAR] if poang.size else []},
         "statistik": {"skogsrutor": int(poang.size), "block": antal,
                       "andel_hog": round(float((poang >= 0.7).mean()), 3) if poang.size else 0},
     }

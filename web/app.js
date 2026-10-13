@@ -52,6 +52,13 @@ async function rutaVid(lngLat) {
 }
 
 const pct = (x) => `${Math.round(x * 100)} %`;
+// Var rutan hamnar bland kommunens skogsrutor; kartans färger går efter samma rangordning
+function placering(p) {
+  const s = meta.skala;
+  if (!s?.poang?.length) return '';
+  for (let i = s.poang.length - 1; i >= 0; i--) if (p >= s.poang[i]) return `<strong>Bland de ${100 - s.percentiler[i]} % bästa</strong> i kommunen`;
+  return 'Under medel i kommunen';
+}
 function forklaring(v) {
   if (!v || v.poang === null) return '<div class="forklaring"><p>Ingen skog här, eller data saknas.</p></div>';
   const raa = {
@@ -70,6 +77,7 @@ function forklaring(v) {
   }).join('');
   return `<div class="forklaring"><div class="poang">${pct(v.poang)}</div>
     <div class="dampad">sannolikhet för kantareller${begr ? `, begränsas av ${FAKTORNAMN[begr].toLowerCase()}` : ''}</div>
+    <div>${placering(v.poang)}</div>
     <table>${rader}</table><button data-fynd>Markera fynd här</button></div>`;
 }
 
@@ -108,7 +116,7 @@ function exportera() {
 
 function omKartan() {
   const k = meta.kallor.map((s) => `<li><strong>${s.namn}</strong> (${s.vad}), ${s.datum}, licens: ${s.licens}${s.url ? `, <a href="${s.url}" target="_blank" rel="noopener">källa</a>` : ''}${s.not ? `<br><span class="dampad">${s.not}</span>` : ''}</li>`).join('');
-  $('omtext').innerHTML = `<p>Sannolikheten är en poäng ur regler om var kantareller brukar växa: trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Tryck på kartan för att se varför ett område bedöms som det gör.</p>
+  $('omtext').innerHTML = `<p>Sannolikheten är en poäng ur regler om var kantareller brukar växa: trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Färgerna går efter rangordning: guld är de 10 % bästa skogsrutorna i kommunen. Tryck på kartan för att se varför ett område bedöms som det gör.</p>
     <p class="dampad">Beräknad ${meta.skapad}. ${meta.statistik.skogsrutor.toLocaleString('sv-SE')} skogsrutor om ${meta.rutnat.ruta_m} m.</p>
     <h3>Källor</h3><ul>${k}</ul>
     <p class="dampad">Dina fynd sparas bara i den här webbläsaren och skickas aldrig någonstans.</p>`;

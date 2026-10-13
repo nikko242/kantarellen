@@ -43,3 +43,13 @@ def test_skog_kraver_trad_eller_avverkning_och_inte_vatten():
     data = {"tradhojd": np.array([[15, 1.5, 1.5, 15]]), "ar_sedan_avverkning": np.array([[nan, 5, nan, nan]]),
             "fukt": np.array([[2, 2, 2, nan]])}
     assert arSkog(data).tolist() == [[True, True, False, False]]   # hög skog, färskt hygge, kalmark, vatten
+
+
+def test_rangen_gor_guld_av_de_basta_tio_procenten():
+    from kantarell.forberakna import farg, rang
+    poang = np.array([[0.9] * 90 + [0.95] * 10 + [np.nan]])
+    r = rang(poang)
+    assert np.isnan(r[0, -1])
+    assert r[0, 0] == 0.9 and r[0, 95] == 1.0
+    rgba = farg(r)
+    assert rgba[0, 95, 0] == 255 and rgba[0, -1, 3] == 0

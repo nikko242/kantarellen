@@ -34,7 +34,7 @@ button.lank { border: none; background: none; padding: 4px; color: var(--skog); 
   display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 11px; color: var(--dampad);
   background: rgba(251, 250, 245, .9); border-radius: 8px;
 }
-.skala i { width: 70px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgb(120,120,120), rgb(170,160,110), rgb(230,170,30), rgb(255,196,0)); }
+.skala i { width: 70px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgb(120,120,120) 0%, rgb(165,158,120) 50%, rgb(215,175,70) 75%, rgb(240,175,20) 90%, rgb(255,196,0) 100%); }
 
 dialog { border: 1px solid var(--kant); border-radius: 14px; padding: 16px; width: min(420px, calc(100% - 24px)); background: var(--yta); color: var(--text); }
 dialog h2 { margin: 0 0 8px; font-size: 18px; color: var(--skog); }
