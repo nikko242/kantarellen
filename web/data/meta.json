@@ -1,0 +1,48 @@
+{
+ "skapad": "2026-10-13 12:24",
+ "rutnat": {
+  "crs": "EPSG:3006",
+  "x0": 476000.0,
+  "y0": 7012000.0,
+  "bredd": 200,
+  "hojd": 200,
+  "ruta_m": 50,
+  "block": 100
+ },
+ "bild": {
+  "fil": "poang.png",
+  "hornen": [
+   [
+    14.522316339142384,
+    63.23676751573162
+   ],
+   [
+    14.722171838829654,
+    63.23676751573162
+   ],
+   [
+    14.722171838829654,
+    63.14663139916455
+   ],
+   [
+    14.522316339142384,
+    63.14663139916455
+   ]
+  ]
+ },
+ "kallor": [
+  {
+   "namn": "Påhittade demodata",
+   "vad": "alla faktorer",
+   "datum": "2026-10-13",
+   "licens": "–",
+   "url": "",
+   "not": "Bara för att pröva appen; säger ingenting om verkliga kantareller."
+  }
+ ],
+ "statistik": {
+  "skogsrutor": 35725,
+  "block": 4,
+  "andel_hog": 0.571
+ }
+}

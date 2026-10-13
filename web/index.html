@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f3b25">
+  <title>Kantarellen</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="karta"></div>
+
+  <header class="rad">
+    <strong>Kantarellen</strong>
+    <span id="status" class="dampad"></span>
+    <button id="om" class="lank" aria-label="Om kartan">Om kartan</button>
+  </header>
+
+  <div class="knappar">
+    <button id="markera" class="primar">Fynd här</button>
+    <button id="lista">Mina fynd (<span id="antal">0</span>)</button>
+  </div>
+
+  <div class="skala" aria-hidden="true"><span>Osannolikt</span><i></i><span>Mest sannolikt</span></div>
+
+  <dialog id="fyndform">
+    <form method="dialog">
+      <h2>Markera fynd</h2>
+      <p id="fyndplats" class="dampad"></p>
+      <label>Mängd
+        <select name="mangd">
+          <option>några</option><option>en näve</option><option>en liter</option><option>flera liter</option>
+        </select>
+      </label>
+      <label>Anteckning <input name="not" placeholder="t.ex. i mossan vid stora granen"></label>
+      <menu><button value="avbryt">Avbryt</button><button value="spara" class="primar">Spara</button></menu>
+    </form>
+  </dialog>
+
+  <dialog id="fyndlista">
+    <h2>Mina fynd</h2>
+    <p class="dampad">Fynden finns bara i den här webbläsaren. Exportera dem om du vill spara dem någon annanstans.</p>
+    <ol id="fynd"></ol>
+    <menu><button id="exportera">Exportera</button><button id="stang-lista" class="primar">Stäng</button></menu>
+  </dialog>
+
+  <dialog id="omkartan">
+    <h2>Om kartan</h2>
+    <div id="omtext"></div>
+    <menu><button id="stang-om" class="primar">Stäng</button></menu>
+  </dialog>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/proj4@2.12.1/dist/proj4.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

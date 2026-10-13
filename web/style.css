@@ -1,0 +1,55 @@
+:root {
+  --skog: #2f3b25;
+  --guld: #e6a91e;
+  --text: #1d1d1b;
+  --dampad: #6b6b63;
+  --yta: #fbfaf5;
+  --kant: #d9d6c8;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text); background: var(--yta); }
+#karta { position: fixed; inset: 0; }
+
+header.rad {
+  position: fixed; top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px;
+  display: flex; gap: 10px; align-items: center; padding: 8px 12px;
+  background: rgba(251, 250, 245, .94); border: 1px solid var(--kant); border-radius: 12px; font-size: 15px;
+}
+header strong { color: var(--skog); }
+.dampad { color: var(--dampad); font-size: 13px; }
+#status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+button { font: inherit; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--kant); background: #fff; color: var(--text); }
+button.primar { background: var(--skog); color: #fff; border-color: var(--skog); }
+button.lank { border: none; background: none; padding: 4px; color: var(--skog); text-decoration: underline; }
+
+.knappar {
+  position: fixed; left: 8px; right: 8px; bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex; gap: 8px; justify-content: center;
+}
+.knappar button { flex: 1; max-width: 220px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+
+.skala {
+  position: fixed; right: 8px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px);
+  display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 11px; color: var(--dampad);
+  background: rgba(251, 250, 245, .9); border-radius: 8px;
+}
+.skala i { width: 70px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgb(120,120,120), rgb(170,160,110), rgb(230,170,30), rgb(255,196,0)); }
+
+dialog { border: 1px solid var(--kant); border-radius: 14px; padding: 16px; width: min(420px, calc(100% - 24px)); background: var(--yta); color: var(--text); }
+dialog h2 { margin: 0 0 8px; font-size: 18px; color: var(--skog); }
+dialog label { display: block; margin: 10px 0; font-size: 14px; }
+dialog select, dialog input { display: block; width: 100%; margin-top: 4px; padding: 10px; font: inherit; border: 1px solid var(--kant); border-radius: 8px; }
+dialog menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; margin: 14px 0 0; }
+#fynd { padding-left: 20px; max-height: 50vh; overflow-y: auto; font-size: 14px; }
+#fynd li { margin-bottom: 6px; }
+#omtext { font-size: 14px; max-height: 60vh; overflow-y: auto; }
+#omtext li { margin-bottom: 6px; }
+
+.forklaring { font-size: 14px; min-width: 200px; }
+.forklaring .poang { font-size: 20px; font-weight: 600; color: var(--skog); }
+.forklaring table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+.forklaring td { padding: 2px 4px; border-top: 1px solid #eee; }
+.forklaring td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.forklaring .begr { color: #9b3b1a; }
+.forklaring button { margin-top: 8px; width: 100%; padding: 8px; }

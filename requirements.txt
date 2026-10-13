@@ -1,0 +1,6 @@
+rasterio
+geopandas
+pyproj
+numpy
+requests
+pytest
