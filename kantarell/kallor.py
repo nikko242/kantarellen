@@ -244,9 +244,10 @@ def fukt(nat: Rutnat) -> np.ndarray:
     return _cache("fukt", nat, h)
 
 
-# NMD:s klasser för bebyggd mark (klasstabellen i NMD2023bas_v2_1.tif.vat.dbf): 51 Byggnad, 52 Anlagd mark, ej byggnad
-# eller väg/järnväg. Vägar (53) räknas inte: en skogsbilväg gör ingen tätort.
-NMD_BEBYGGD = (51, 52)
+# NMD:s klasser för bebyggd mark (klasstabellen i NMD2023bas_v2_1.tif.vat.dbf): 51 Byggnad, 52 Anlagd mark (ej byggnad
+# eller väg/järnväg) och 53 Väg eller järnväg. Gatorna behövs för att villaområden ska nå gränsen; en skogsbilväg
+# ger högst omkring 15 % inom 250 × 250 m (99:e percentilen kring Östersund) och gör alltså ingen tätort.
+NMD_BEBYGGD = (51, 52, 53)
 
 
 def _nmd_band(args) -> np.ndarray:
@@ -285,7 +286,8 @@ def _lada(a: np.ndarray, r: int) -> np.ndarray:
     return summa / antal
 
 
-# En ruta räknas som tätort när minst så här stor andel av marken inom 250 × 250 m är bebyggd (NMD).
+# En ruta räknas som tätort när minst så här stor andel av marken inom 250 × 250 m är bebyggd (NMD). Med 20 % blir
+# Östersunds tätort 28,6 km², nära SCB:s tätortsyta.
 TATORT_ANDEL = 0.2
 
 

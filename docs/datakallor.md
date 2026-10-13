@@ -273,6 +273,6 @@ Inget av detta behövs för de rekommenderade vägarna.
 | Höjd | Copernicus GLO-30, alla 1°-rutor som täcker länet (rutor utan land hoppas över) | läses direkt |
 | Bebyggd mark | **NMD 2023 basskikt v2.1** (Naturvårdsverket, CC0): `https://geodata.naturvardsverket.se/nedladdning/marktacke/NMD2023/Basskikt_v2_x/NMD2023_basskikt_v2_1.zip`. 10 m, EPSG:3006, kanterna på jämna 50 m. Klasserna står i `NMD2023bas_v2_1.tif.vat.dbf`: 51 Byggnad, 52 Anlagd mark (ej byggnad eller väg/järnväg) och 53 Väg eller järnväg | 2,5 GB zip, 10,8 GB tif |
 
-**Tätort (DO-9 i Saida):** andelen bebyggd mark (51 och 52, inte vägar) räknas per ruta och medelvärdesbildas över 250 × 250 m. En ruta där minst 20 % av marken är bebyggd räknas inte som skog. Ett ensamt hus eller en skogsbilväg gör alltså ingen tätort.
+**Tätort (DO-9 i Saida):** andelen bebyggd mark (51, 52 och 53, alltså hus, anlagd mark och vägar) räknas per ruta och medelvärdesbildas över 250 × 250 m. En ruta där minst 20 % av marken är bebyggd räknas inte som skog. Valet prövades kring Östersund: utan vägarna blev tätorten 12,6 km², eftersom villaområdena nästan bara har hus och gator (Torvalla: 19 % hus och anlagd mark), och med vägarna 28,6 km², nära SCB:s tätortsyta. En skogsbilväg utan hus ger högst omkring 15 % (99:e percentilen), och ett ensamt hus gör ingen tätort.
 
 **Kartdatan** blir för stor för en enda bild: den delas i tiles (zoom 5–11) och blocken komprimeras med gzip. Se README.

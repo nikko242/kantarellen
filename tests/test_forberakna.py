@@ -66,10 +66,12 @@ def test_tatort_raknas_inte_som_skog():
     bebyggd = np.zeros((20, 20))
     bebyggd[2:7, 2:7] = 0.6          # ett villaområde: hälften av marken är hus, vägar och tomter
     bebyggd[15, 15] = 1.0            # ett ensamt hus i skogen
+    bebyggd[:, 10] = 0.2             # en skogsbilväg (10 m bred) genom rutorna
     t = tatort(bebyggd)
     assert t[4, 4] and t[2, 2]       # mitt i och i kanten av villaområdet
     assert not t[15, 15]             # ett hus gör ingen tätort
     assert not t[12, 4]              # skogen intill
+    assert not t[12, 10]             # vägen
     data = {"tradhojd": np.full((20, 20), 15.0), "ar_sedan_avverkning": np.full((20, 20), np.nan),
             "fukt": np.full((20, 20), 2.0), "tatort": t}
     skog = arSkog(data)
