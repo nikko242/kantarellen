@@ -1,11 +1,11 @@
 {
- "skapad": "2026-10-13 12:24",
+ "skapad": "2026-10-13 13:08",
  "rutnat": {
   "crs": "EPSG:3006",
-  "x0": 476000.0,
-  "y0": 7012000.0,
-  "bredd": 200,
-  "hojd": 200,
+  "x0": 462950.0,
+  "y0": 7051900.0,
+  "bredd": 1299,
+  "hojd": 2070,
   "ruta_m": 50,
   "block": 100
  },
@@ -13,36 +13,77 @@
   "fil": "poang.png",
   "hornen": [
    [
-    14.522316339142384,
-    63.23676751573162
+    14.253342988196035,
+    63.595132831687415
    ],
    [
-    14.722171838829654,
-    63.23676751573162
+    15.562563911538524,
+    63.595132831687415
    ],
    [
-    14.722171838829654,
-    63.14663139916455
+    15.562563911538524,
+    62.66433439908059
    ],
    [
-    14.522316339142384,
-    63.14663139916455
+    14.253342988196035,
+    62.66433439908059
    ]
   ]
  },
  "kallor": [
   {
-   "namn": "Påhittade demodata",
-   "vad": "alla faktorer",
-   "datum": "2026-10-13",
-   "licens": "–",
-   "url": "",
-   "not": "Bara för att pröva appen; säger ingenting om verkliga kantareller."
+   "namn": "Kommungränsen (OpenStreetMap)",
+   "vad": "kommunens yta",
+   "licens": "ODbL, © OpenStreetMap contributors",
+   "url": "https://www.openstreetmap.org/relation/935577",
+   "datum": "2026-10-13"
+  },
+  {
+   "namn": "SLU Skogskarta, trädslag",
+   "vad": "gran, tall och björk (andel av volymen, 12,5 m)",
+   "licens": "öppet och fritt (SLU), ange källan",
+   "url": "https://gis.slu.se/data/slu_forest_map/2018/data/",
+   "datum": "2026-10-13"
+  },
+  {
+   "namn": "SLU Skogliga grunddata, medelhöjd (SGD2)",
+   "vad": "trädhöjd, 10 m",
+   "licens": "öppet och fritt (SLU), ange källan",
+   "url": "https://gis.slu.se/data/slu_skogliga_grunddata/SGD2/data/SGD2_HGV.tif",
+   "datum": "2026-10-13"
+  },
+  {
+   "namn": "Skogsstyrelsen, utförda avverkningar",
+   "vad": "avverkade ytor med datum",
+   "licens": "CC0",
+   "url": "https://geodpags.skogsstyrelsen.se/arcgis/rest/services/Geodataportal/GeodataportalVisaUtfordavverkning/MapServer/1",
+   "datum": "2026-10-13"
+  },
+  {
+   "namn": "SLU markfuktighetskarta, klassad (Skogsstyrelsen)",
+   "vad": "markfuktighet, 2 m (klasserna tolkade: torr–frisk, frisk–fuktig, blöt, vatten)",
+   "licens": "CC0",
+   "url": "https://geodpags.skogsstyrelsen.se/geodataport/data/sksSLUMarkfuktighet_klassad23.zip",
+   "datum": "2026-10-13"
+  },
+  {
+   "namn": "SGU jordarter 1:25 000–1:100 000",
+   "vad": "jordart",
+   "licens": "CC0",
+   "url": "https://api.sgu.se/oppnadata/jordarter25k-100k/ogc/features/v1",
+   "datum": "2026-10-13"
+  },
+  {
+   "namn": "Copernicus DEM GLO-30",
+   "vad": "höjd över havet, 30 m (ytmodell)",
+   "licens": "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA",
+   "url": "https://copernicus-dem-30m.s3.amazonaws.com/",
+   "datum": "2026-10-13"
   }
  ],
  "statistik": {
-  "skogsrutor": 35725,
-  "block": 4,
-  "andel_hog": 0.571
+  "skogsrutor": 827065,
+  "block": 139,
+  "andel_hog": 0.532
  }
 }

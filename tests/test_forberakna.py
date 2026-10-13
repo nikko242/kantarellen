@@ -35,3 +35,11 @@ def test_forberakningen_med_demodata(tmp_path):
     # Varje block är fullt: 100 × 100 rutor × 14 byte
     for b in (tmp_path / "block").glob("*.bin"):
         assert b.stat().st_size == BLOCK * BLOCK * len(FALT)
+
+
+def test_skog_kraver_trad_eller_avverkning_och_inte_vatten():
+    from kantarell.kallor import arSkog
+    nan = np.nan
+    data = {"tradhojd": np.array([[15, 1.5, 1.5, 15]]), "ar_sedan_avverkning": np.array([[nan, 5, nan, nan]]),
+            "fukt": np.array([[2, 2, 2, nan]])}
+    assert arSkog(data).tolist() == [[True, True, False, False]]   # hög skog, färskt hygge, kalmark, vatten

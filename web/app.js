@@ -121,12 +121,7 @@ async function start() {
   const h = meta.bild.hornen;
   karta = new maplibregl.Map({
     container: 'karta',
-    style: {
-      version: 8,
-      sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' } },
-      layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-    },
+    style: 'https://tiles.openfreemap.org/styles/liberty',   // OpenFreeMap: öppen bakgrundskarta utan nyckel
     bounds: [h[3], h[1]],
     fitBoundsOptions: { padding: 20 },
   });
@@ -138,7 +133,9 @@ async function start() {
 
   karta.on('load', () => {
     karta.addSource('poang', { type: 'image', url: `data/${meta.bild.fil}`, coordinates: h });
-    karta.addLayer({ id: 'poang', type: 'raster', source: 'poang', paint: { 'raster-opacity': 0.75, 'raster-resampling': 'nearest' } });
+    // Under vägar och ortnamn, så att kartan går att läsa genom poängen
+    const forsta = karta.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+    karta.addLayer({ id: 'poang', type: 'raster', source: 'poang', paint: { 'raster-opacity': 0.7, 'raster-resampling': 'nearest' } }, forsta);
     karta.addSource('fynd', { type: 'geojson', data: fyndSomGeojson() });
     karta.addLayer({ id: 'fynd', type: 'circle', source: 'fynd', paint: { 'circle-radius': 7, 'circle-color': '#e6a91e', 'circle-stroke-color': '#2f3b25', 'circle-stroke-width': 2 } });
     visaFynd();
