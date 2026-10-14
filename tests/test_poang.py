@@ -92,17 +92,36 @@ def test_falten_ger_samma_svar_som_bedom():
          "ar_sedan_avverkning": med_luckor(rng.integers(0, 60, n).astype(float), 0.7),
          "jordart": med_luckor(rng.integers(1, 10, n).astype(float)), "fukt": med_luckor(rng.integers(1, 6, n).astype(float)),
          "hojd": med_luckor(rng.integers(200, 1100, n).astype(float))}
-    ut = bedom_falt(d)
-    for i in range(n):
-        v = {k: (None if np.isnan(a[i]) else a[i]) for k, a in d.items()}
-        for k in ("ar_sedan_avverkning", "jordart", "fukt"):
-            v[k] = None if v[k] is None else int(v[k])
-        b = bedom(Ruta(**v))
-        assert (b.poang is None) == np.isnan(ut["poang"][i])
-        if b.poang is not None:
-            # avrundningen till tre decimaler kan slå åt olika håll när summan räknas i en annan ordning
-            assert b.poang == pytest.approx(ut["poang"][i], abs=0.0011)
-        for k, x in b.faktorer.items():
-            assert (x is None) == np.isnan(ut[f"f_{k}"][i])
-            if x is not None:
-                assert x == pytest.approx(ut[f"f_{k}"][i])
+    for lan in (None, "04"):
+        ut = bedom_falt(d, lan)
+        for i in range(n):
+            v = {k: (None if np.isnan(a[i]) else a[i]) for k, a in d.items()}
+            for k in ("ar_sedan_avverkning", "jordart", "fukt"):
+                v[k] = None if v[k] is None else int(v[k])
+            b = bedom(Ruta(**v, lan=lan))
+            assert (b.poang is None) == np.isnan(ut["poang"][i])
+            if b.poang is not None:
+                # avrundningen till tre decimaler kan slå åt olika håll när summan räknas i en annan ordning
+                assert b.poang == pytest.approx(ut["poang"][i], abs=0.0011)
+            for k, x in b.faktorer.items():
+                assert (x is None) == np.isnan(ut[f"f_{k}"][i])
+                if x is not None:
+                    assert x == pytest.approx(ut[f"f_{k}"][i])
+
+
+def test_sand_grus_och_berg_ger_nastan_lika_hog_jordartspoang_som_moran():
+    # Varv 5 (KS-12): fynden i Södermanland ligger oftare på sand, grus och berg i dagen än skogen i stort
+    moran = bedom(Ruta(gran=75, tradhojd=18, jordart=1)).faktorer["jordart"]
+    assert bedom(Ruta(gran=75, tradhojd=18, jordart=2)).faktorer["jordart"] == moran
+    assert bedom(Ruta(gran=75, tradhojd=18, jordart=3)).faktorer["jordart"] == moran
+    assert bedom(Ruta(gran=75, tradhojd=18, jordart=7)).faktorer["jordart"] == 0.8
+    assert bedom(Ruta(gran=75, tradhojd=18, jordart=5)).faktorer["jordart"] == 0.2   # lera som förut
+
+
+def test_i_sodermanland_ger_tradhojden_full_alder_forst_vid_25_m():
+    # Varv 5 (KS-12): i Södermanland står fynden i högre skog; i Jämtland gäller 5–15 m som förut
+    assert bedom(Ruta(gran=75, tradhojd=18)).faktorer["alder"] == 1.0
+    assert bedom(Ruta(gran=75, tradhojd=18, lan="23")).faktorer["alder"] == 1.0
+    assert bedom(Ruta(gran=75, tradhojd=18, lan="04")).faktorer["alder"] == pytest.approx((18 - 10) / 15)
+    assert bedom(Ruta(gran=75, tradhojd=25, lan="04")).faktorer["alder"] == 1.0
+    assert bedom(Ruta(gran=75, tradhojd=9, lan="04")).faktorer["alder"] == 0.0

@@ -30,7 +30,7 @@ def berakna(nat: Rutnat, data: dict[str, np.ndarray], innanfor: np.ndarray | Non
     data har källfälten som float-arrayer på rutnätet (NaN = saknas). Med lannr får länets rutor länskoden."""
     shape = (nat.hojd, nat.bredd)
     kalla = {f: data.get(f, np.full(shape, np.nan)).astype(np.float32) for f in KALLFALT}
-    ut = {**{k: v.astype(np.float32) for k, v in bedom_falt(kalla).items()}, **kalla}
+    ut = {**{k: v.astype(np.float32) for k, v in bedom_falt(kalla, lannr).items()}, **kalla}
     ut["lan"] = np.full(shape, np.nan if lannr is None else float(lannr), dtype=np.float32)
     if innanfor is not None:
         for f in ut:
