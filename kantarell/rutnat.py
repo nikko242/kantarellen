@@ -1,8 +1,12 @@
 """Rutnätet: rutor om 50 × 50 m i SWEREF99 TM (EPSG:3006), indelat i block om 100 × 100 rutor (5 × 5 km).
 
-Varje ruta lagras som 14 byte (0–254 är värden, 255 betyder att data saknas):
+Blocken ligger i ett rutnät för hela landet (origo LAND_X0, LAND_Y0), så att ett block har samma namn oavsett vilket
+län det räknas för (Saida, KS-11). Ett läns rutnät har därför kanterna på jämna block.
+
+Varje ruta lagras som 15 byte (0–254 är värden, 255 betyder att data saknas):
   0 poäng (0–250)          1–5 faktorerna tradslag, alder, jordart, fukt, hojd (0–250)
   6–8 gran, tall, björk (%) 9 trädhöjd (m)   10 år sedan avverkning   11 jordart   12 fuktklass   13 höjd över havet / 5
+  14 länskod (t.ex. 23 för Jämtlands län)
 Webbappen läser blocket för en ruta när man trycker på den.
 """
 from __future__ import annotations
@@ -13,9 +17,12 @@ import numpy as np
 
 RUTA_M = 50
 BLOCK = 100
+BLOCK_M = BLOCK * RUTA_M
 SAKNAS = 255
 FALT = ["poang", "f_tradslag", "f_alder", "f_jordart", "f_fukt", "f_hojd",
-        "gran", "tall", "bjork", "tradhojd", "ar_sedan_avverkning", "jordart", "fukt", "hojd"]
+        "gran", "tall", "bjork", "tradhojd", "ar_sedan_avverkning", "jordart", "fukt", "hojd", "lan"]
+# Landets rutnät: nordvästra hörnet, väster och norr om hela Sverige (på jämna block)
+LAND_X0, LAND_Y0 = 0.0, 7_700_000.0
 
 
 @dataclass(frozen=True)
@@ -26,13 +33,21 @@ class Rutnat:
     hojd: int   # antal rutor i y
 
     @staticmethod
-    def kring(minx: float, miny: float, maxx: float, maxy: float) -> "Rutnat":
-        """Rutnätet som täcker en bbox, med kanterna på jämna 50 m."""
-        x0 = np.floor(minx / RUTA_M) * RUTA_M
-        y0 = np.ceil(maxy / RUTA_M) * RUTA_M
-        x1 = np.ceil(maxx / RUTA_M) * RUTA_M
-        y1 = np.floor(miny / RUTA_M) * RUTA_M
-        return Rutnat(float(x0), float(y0), int((x1 - x0) / RUTA_M), int((y0 - y1) / RUTA_M))
+    def kring(minx: float, miny: float, maxx: float, maxy: float, steg: float = BLOCK_M) -> "Rutnat":
+        """Rutnätet som täcker en bbox, med kanterna på landets block (eller på jämna steg)."""
+        x0 = np.floor(minx / steg) * steg
+        y0 = np.ceil(maxy / steg) * steg
+        x1 = np.ceil(maxx / steg) * steg
+        y1 = np.floor(miny / steg) * steg
+        return Rutnat(float(x0), float(y0), int(round((x1 - x0) / RUTA_M)), int(round((y0 - y1) / RUTA_M)))
+
+    @property
+    def block0(self) -> tuple[int, int]:
+        """Det första blockets plats i landets rutnät."""
+        bx, by = (self.x0 - LAND_X0) / BLOCK_M, (LAND_Y0 - self.y0) / BLOCK_M
+        if bx != int(bx) or by != int(by):
+            raise ValueError(f"rutnätet ({self.x0}, {self.y0}) ligger inte på landets block")
+        return int(bx), int(by)
 
     @property
     def transform(self):
@@ -44,10 +59,11 @@ class Rutnat:
         return (self.x0, self.y0 - self.hojd * RUTA_M, self.x0 + self.bredd * RUTA_M, self.y0)
 
     def block(self):
-        """Blocken som (bx, by, rad0, kol0, rader, kolumner)."""
+        """Blocken som (bx, by, rad0, kol0, rader, kolumner), med bx och by i landets rutnät."""
+        bx0, by0 = self.block0
         for by in range(0, self.hojd, BLOCK):
             for bx in range(0, self.bredd, BLOCK):
-                yield bx // BLOCK, by // BLOCK, by, bx, min(BLOCK, self.hojd - by), min(BLOCK, self.bredd - bx)
+                yield bx0 + bx // BLOCK, by0 + by // BLOCK, by, bx, min(BLOCK, self.hojd - by), min(BLOCK, self.bredd - bx)
 
 
 def byte(v: np.ndarray, skala: float = 1.0, max_: int = 254) -> np.ndarray:
@@ -59,7 +75,7 @@ def byte(v: np.ndarray, skala: float = 1.0, max_: int = 254) -> np.ndarray:
 
 
 def koda_block(falt: dict[str, np.ndarray]) -> bytes:
-    """Ett block som byte, ruta för ruta (radvis), 14 byte per ruta."""
+    """Ett block som byte, ruta för ruta (radvis), 15 byte per ruta."""
     skalor = {"poang": 250, "f_tradslag": 250, "f_alder": 250, "f_jordart": 250, "f_fukt": 250, "f_hojd": 250, "hojd": 0.2}
     lager = [byte(falt[f], skalor.get(f, 1.0)) for f in FALT]
     return np.stack(lager, axis=-1).tobytes()

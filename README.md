@@ -2,11 +2,11 @@
 
 En karta att ha med i skogen som visar var det är mest sannolikt att hitta kantareller, räknat ur öppna data om skogen och marken. Fynd markeras på kartan och sparas bara i telefonen.
 
-Prototyp för Jämtlands län (varv 1 gällde Östersunds kommun). Idén står i [ide.md](ide.md); kunskapen om systemet (varför det är byggt så här) finns i Saida.
+Prototyp för Jämtlands och Södermanlands län (varv 1 gällde Östersunds kommun, varv 4 lade till Södermanland). Idén står i [ide.md](ide.md); kunskapen om systemet (varför det är byggt så här) finns i Saida.
 
 ## Så fungerar det
 
-- **Förberäkningen** (`kantarell/`, Python) lägger länet i rutor om 50 × 50 m (omkring 40 miljoner rutor) och räknar en poäng per ruta ur trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Reglerna står i [kantarell/poang.py](kantarell/poang.py). Tätorter räknas inte som skog (bebyggd mark enligt NMD).
+- **Förberäkningen** (`kantarell/`, Python) lägger varje län i rutor om 50 × 50 m i ett rutnät för hela landet (Jämtland är omkring 40 miljoner rutor) och räknar en poäng per ruta ur trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Reglerna står i [kantarell/poang.py](kantarell/poang.py). Tätorter räknas inte som skog (bebyggd mark enligt NMD). Länen räknas var för sig och färgerna rangordnas per län: guld är de bästa 10 % i länet.
 - **Webbappen** (`web/`) är statisk: MapLibre visar kartan som tiles (`web/data/tiles/`, zoom 5–11), och trycker man på en ruta läses dess förklaring ur de gzip-komprimerade blocken i `web/data/block/`. Fynden sparas i webbläsaren (localStorage) och kan exporteras som GeoJSON.
 
 ## Kom igång
@@ -16,7 +16,7 @@ python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt      # Linux/macOS: .venv/bin/pip
 
 .venv/Scripts/python -m kantarell.forberakna --demo   # påhittade data kring Östersund
-.venv/Scripts/python -m kantarell.forberakna          # riktiga källor för Jämtlands län (ungefär en timme första gången)
+.venv/Scripts/python -m kantarell.forberakna          # riktiga källor för länen (ungefär en timme per stort län första gången)
 
 python -m http.server 8000 -d web                     # visa appen på http://localhost:8000
 .venv/Scripts/python -m pytest                        # testerna
@@ -24,7 +24,7 @@ python -m http.server 8000 -d web                     # visa appen på http://lo
 
 Mobilen ger sin position bara till sidor med https; prova positionen på GitHub Pages.
 
-Tre källor finns bara som stora nedladdningar och läggs i `data/raw/dl/` (packas upp automatiskt): NMD 2023 (`NMD2023_basskikt_v2_1.zip`, 2,5 GB), SGU:s jordarter (`jordarter25k-100k.zip`, 3,4 GB) och markfuktigheten för Jämtland i `data/raw/markfuktighet/`. Adresserna står i [docs/datakallor.md](docs/datakallor.md).
+Tre källor finns bara som stora nedladdningar och läggs i `data/raw/dl/` (packas upp automatiskt): NMD 2023 (`NMD2023_basskikt_v2_1.zip`, 2,5 GB), SGU:s jordarter (`jordarter25k-100k.zip`, 3,4 GB) och markfuktigheten per län i `data/raw/markfuktighet/` (`sksSLUMarkfuktighet_klassad23` och `_klassad04`). Adresserna står i [docs/datakallor.md](docs/datakallor.md).
 
 ## Datakällor
 

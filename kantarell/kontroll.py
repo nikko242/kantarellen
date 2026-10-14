@@ -2,8 +2,8 @@
 
   python -m kantarell.kontroll
 
-Jämför poängen i rutorna med fynd mot poängen i alla skogsrutor. Fynden är få och skeva (de rapporteras där folk går),
-så kontrollen visar en riktning, inte en träffsäkerhet.
+Jämför poängen i rutorna med fynd mot poängen i alla skogsrutor, för varje län för sig (Saida, KS-11). Fynden är få
+och skeva (de rapporteras där folk går), så kontrollen visar en riktning, inte en träffsäkerhet.
 """
 from __future__ import annotations
 
@@ -37,7 +37,8 @@ def fynd(lon0, lat0, lon1, lat1) -> list[tuple[float, float, int | None]]:
         offset += 300
 
 
-def poang_vid(meta: dict, x: float, y: float, cache: dict) -> float | None:
+def ruta_vid(meta: dict, x: float, y: float, cache: dict) -> tuple[float, int] | None:
+    """Poängen och länskoden i rutan, eller None om det inte är en skogsruta."""
     n = meta["rutnat"]
     kol, rad = int((x - n["x0"]) // n["ruta_m"]), int((n["y0"] - y) // n["ruta_m"])
     if not (0 <= kol < n["bredd"] and 0 <= rad < n["hojd"]):
@@ -49,34 +50,41 @@ def poang_vid(meta: dict, x: float, y: float, cache: dict) -> float | None:
     b = cache[nyckel]
     if b is None:
         return None
-    v = b[((rad % BLOCK) * BLOCK + kol % BLOCK) * len(FALT)]
-    return None if v == SAKNAS else v / 250
+    i = ((rad % BLOCK) * BLOCK + kol % BLOCK) * len(FALT)
+    v, lan = b[i], b[i + FALT.index("lan")]
+    return None if v == SAKNAS else (v / 250, lan)
 
 
-def alla_poang(meta: dict) -> np.ndarray:
-    v = []
+def alla_poang() -> dict[int, np.ndarray]:
+    """Poängen i alla skogsrutor, per länskod."""
+    v: dict[int, list] = {}
     for p in (WEB / "block").glob("*.bin.gz"):
-        a = np.frombuffer(gzip.decompress(p.read_bytes()), dtype=np.uint8).reshape(-1, len(FALT))[:, 0]
-        v.append(a[a != SAKNAS] / 250)
-    return np.concatenate(v)
+        a = np.frombuffer(gzip.decompress(p.read_bytes()), dtype=np.uint8).reshape(-1, len(FALT))
+        a = a[a[:, 0] != SAKNAS]
+        for lan in np.unique(a[:, FALT.index("lan")]):
+            v.setdefault(int(lan), []).append(a[a[:, FALT.index("lan")] == lan, 0] / 250)
+    return {lan: np.concatenate(d) for lan, d in v.items()}
 
 
 def main() -> None:
     from pyproj import Transformer
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     meta = json.loads((WEB / "meta.json").read_text(encoding="utf-8"))
-    lista = fynd(*meta["tiles"]["bounds"])
     t = Transformer.from_crs("EPSG:4326", "EPSG:3006", always_xy=True)
     cache: dict = {}
-    vid = [p for lon, lat, _ in lista if (p := poang_vid(meta, *t.transform(lon, lat), cache)) is not None]
-    alla = alla_poang(meta)
-    print(f"Fynd i kartans område ({meta['omrade']}): {len(lista)}, varav {len(vid)} i en skogsruta.")
-    if vid:
-        hog = float(np.quantile(alla, 0.7))
-        print(f"Medelpoäng: fynden {np.mean(vid):.2f}, alla skogsrutor {alla.mean():.2f}.")
-        print(f"Andel fynd i de 30 % bästa rutorna: {np.mean(np.array(vid) >= hog):.0%} (slumpen ger 30 %).")
+    alla = alla_poang()
+    for nr, lan in meta["lan"].items():
+        lista = fynd(*lan["bounds"])
+        # Bboxen når in i grannlänen: bara fynd i länets egna skogsrutor räknas
+        rutor = [ruta_vid(meta, *t.transform(lon, lat), cache) for lon, lat, _ in lista]
+        vid = [r[0] for r in rutor if r is not None and r[1] == int(nr)]
+        skog = alla.get(int(nr), np.array([]))
+        print(f"{lan['namn']}: {len(lista)} fynd i länets bbox, varav {len(vid)} i en skogsruta i länet.")
+        if vid and skog.size:
+            hog = float(np.quantile(skog, 0.7))
+            print(f"  Medelpoäng: fynden {np.mean(vid):.2f}, alla skogsrutor {skog.mean():.2f}.")
+            print(f"  Andel fynd i de 30 % bästa rutorna: {np.mean(np.array(vid) >= hog):.0%} (slumpen ger 30 %).")
     print("Få fynd ger en osäker kontroll; se det som en riktning.")
-
 
 if __name__ == "__main__":
     main()

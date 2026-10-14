@@ -4,7 +4,7 @@
 proj4.defs('EPSG:3006', '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
 const TILL_SWEREF = proj4('EPSG:4326', 'EPSG:3006');
 const FALT = ['poang', 'f_tradslag', 'f_alder', 'f_jordart', 'f_fukt', 'f_hojd',
-  'gran', 'tall', 'bjork', 'tradhojd', 'ar_sedan_avverkning', 'jordart', 'fukt', 'hojd'];
+  'gran', 'tall', 'bjork', 'tradhojd', 'ar_sedan_avverkning', 'jordart', 'fukt', 'hojd', 'lan'];
 const JORDARTER = { 1: 'morän', 2: 'sand', 3: 'grus', 4: 'silt', 5: 'lera', 6: 'torv', 7: 'berg i dagen', 8: 'annat' };
 const FUKT = { 1: 'torr', 2: 'frisk', 3: 'fuktig', 4: 'blöt' };
 const FAKTORNAMN = { tradslag: 'Trädslag', alder: 'Skogens ålder', jordart: 'Jordart', fukt: 'Markfuktighet', hojd: 'Höjd' };
@@ -55,12 +55,13 @@ async function rutaVid(lngLat) {
 }
 
 const pct = (x) => `${Math.round(x * 100)} %`;
-// Var rutan hamnar bland områdets skogsrutor; kartans färger går efter samma rangordning
-function placering(p) {
-  const s = meta.skala;
+// Var rutan hamnar bland skogsrutorna i sitt län; kartans färger går efter samma rangordning (varje län för sig)
+function placering(p, lan) {
+  const l = meta.lan?.[String(lan ?? '').padStart(2, '0')];
+  const s = l?.skala;
   if (!s?.poang?.length) return '';
-  for (let i = s.poang.length - 1; i >= 0; i--) if (p >= s.poang[i]) return `<strong>Bland de ${100 - s.percentiler[i]} % bästa</strong> i ${meta.omrade}`;
-  return `Under medel i ${meta.omrade}`;
+  for (let i = s.poang.length - 1; i >= 0; i--) if (p >= s.poang[i]) return `<strong>Bland de ${100 - s.percentiler[i]} % bästa</strong> i ${l.namn}`;
+  return `Under medel i ${l.namn}`;
 }
 function forklaring(v) {
   if (!v || v.poang === null) return '<div class="forklaring"><p>Ingen skog här, eller data saknas.</p></div>';
@@ -80,7 +81,7 @@ function forklaring(v) {
   }).join('');
   return `<div class="forklaring"><div class="poang">${pct(v.poang)}</div>
     <div class="dampad">sannolikhet för kantareller${begr ? `, begränsas av ${FAKTORNAMN[begr].toLowerCase()}` : ''}</div>
-    <div>${placering(v.poang)}</div>
+    <div>${placering(v.poang, v.lan)}</div>
     <table>${rader}</table><button data-fynd>Markera fynd här</button></div>`;
 }
 
@@ -119,7 +120,7 @@ function exportera() {
 
 function omKartan() {
   const k = meta.kallor.map((s) => `<li><strong>${s.namn}</strong> (${s.vad}), ${s.datum}, licens: ${s.licens}${s.url ? `, <a href="${s.url}" target="_blank" rel="noopener">källa</a>` : ''}${s.not ? `<br><span class="dampad">${s.not}</span>` : ''}</li>`).join('');
-  $('omtext').innerHTML = `<p>Sannolikheten är en poäng ur regler om var kantareller brukar växa: trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Färgerna går efter rangordning: guld är de 10 % bästa skogsrutorna i ${meta.omrade}. Tryck på kartan för att se varför ett område bedöms som det gör.</p>
+  $('omtext').innerHTML = `<p>Sannolikheten är en poäng ur regler om var kantareller brukar växa: trädslag, skogens ålder (trädhöjd och avverkningar), jordart, markfuktighet och höjd. Färgerna går efter rangordning i varje län för sig: guld är de 10 % bästa skogsrutorna i länet (${meta.omrade}). Tryck på kartan för att se varför ett område bedöms som det gör.</p>
     <p class="dampad">Beräknad ${meta.skapad}. ${meta.statistik.skogsrutor.toLocaleString('sv-SE')} skogsrutor om ${meta.rutnat.ruta_m} m.</p>
     <h3>Källor</h3><ul>${k}</ul>
     <p class="dampad">Dina fynd sparas bara i den här webbläsaren och skickas aldrig någonstans.</p>`;
