@@ -43,7 +43,7 @@ def test_bjorkinslag_hojer_tradslaget():
 
 
 def test_ovan_tradgransen_ger_ingen_kantarell():
-    b = bedom(Ruta(gran=60, tall=20, tradhojd=6, jordart=1, fukt=2, hojd=950))
+    b = bedom(Ruta(gran=60, tall=20, tradhojd=6, jordart=1, fukt=2, hojd=1050))
     assert b.faktorer["hojd"] == 0.0
     assert b.poang == 0.0
 
@@ -57,6 +57,20 @@ def test_saknad_data_raknas_bort_och_markeras():
 def test_utan_tradslag_ar_rutan_inte_skog():
     b = bedom(Ruta(tradhojd=18, jordart=1, fukt=2, hojd=420))
     assert b.poang is None
+
+
+def test_tall_raknas_som_halv_gran():
+    # Varv 3 (KS-9): ren tallskog får lägre trädslagspoäng än ren granskog med samma andel barrträd
+    tall = bedom(Ruta(gran=0, tall=80, tradhojd=18, jordart=1, fukt=2, hojd=420))
+    gran = bedom(Ruta(gran=80, tall=0, tradhojd=18, jordart=1, fukt=2, hojd=420))
+    assert gran.faktorer["tradslag"] == 1.0
+    assert tall.faktorer["tradslag"] == pytest.approx((40 - 20) / 60)
+
+
+def test_hojden_sanker_poangen_mellan_800_och_1000_m():
+    assert bedom(Ruta(gran=75, tall=10, tradhojd=18, hojd=780)).faktorer["hojd"] == 1.0
+    assert bedom(Ruta(gran=75, tall=10, tradhojd=18, hojd=900)).faktorer["hojd"] == pytest.approx(0.5)
+    assert bedom(Ruta(gran=75, tall=10, tradhojd=18, hojd=1000)).faktorer["hojd"] == 0.0
 
 
 def test_ramp_at_bada_hallen():

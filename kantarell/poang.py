@@ -14,6 +14,11 @@ from dataclasses import dataclass, field
 VIKTER = {"tradslag": 0.30, "alder": 0.30, "jordart": 0.15, "fukt": 0.15, "hojd": 0.10}
 # Under den här nivån begränsar en faktor hela rutan.
 BEGRANSANDE = 0.15
+# Tall räknas som halv gran i trädslaget, och höjden sänker poängen mellan 800 och 1000 m (varv 3, KS-9): fynden i länet
+# har mer gran och mindre tall än skogen i stort och ligger högre. Med tall 0,5 hamnar 32 % av fynden bland de 30 %
+# bästa rutorna (27 % före); 0,25 gav 42 %, men fynden är få och skeva, så steget är försiktigt.
+TALL_VIKT = 0.5
+HOJD_FULL, HOJD_NOLL = 800, 1000
 
 # Jordarter, grupperade ur SGU:s jordartskarta (kod i kartfilerna → namn och värde).
 JORDARTER: dict[int, tuple[str, float]] = {
@@ -65,10 +70,10 @@ def ramp(x: float, fran: float, till: float) -> float:
 
 
 def tradslag(r: Ruta) -> float | None:
-    """Gran och tall ger hög poäng, gärna med inslag av björk (5–30 %)."""
+    """Gran ger hög poäng, tall hälften så mycket (TALL_VIKT), gärna med inslag av björk (5–30 %)."""
     if r.gran is None and r.tall is None:
         return None
-    barr = (r.gran or 0) + (r.tall or 0)
+    barr = (r.gran or 0) + TALL_VIKT * (r.tall or 0)
     v = ramp(barr, 20, 80)
     if r.bjork is not None and 5 <= r.bjork <= 30:
         v = min(1.0, v + 0.1)
@@ -97,10 +102,10 @@ def fukt(r: Ruta) -> float | None:
 
 
 def hojd(r: Ruta) -> float | None:
-    """Under trädgränsen har höjden liten betydelse; närmare fjället sjunker poängen."""
+    """Under trädgränsen har höjden liten betydelse; närmare fjället (HOJD_FULL–HOJD_NOLL) sjunker poängen."""
     if r.hojd is None:
         return None
-    return ramp(r.hojd, 900, 700)
+    return ramp(r.hojd, HOJD_NOLL, HOJD_FULL)
 
 
 FAKTORER = {"tradslag": tradslag, "alder": alder, "jordart": jordart, "fukt": fukt, "hojd": hojd}
@@ -141,13 +146,13 @@ def bedom_falt(d: dict) -> dict:
     Ger poang och f_<faktor> som arrayer (NaN = saknas; poang är NaN där rutan inte är skog)."""
     import numpy as np
     gran, tall, bjork = d["gran"], d["tall"], d["bjork"]
-    ts = _ramp(np.nan_to_num(gran) + np.nan_to_num(tall), 20, 80)
+    ts = _ramp(np.nan_to_num(gran) + TALL_VIKT * np.nan_to_num(tall), 20, 80)
     ts = np.where((bjork >= 5) & (bjork <= 30), np.minimum(1.0, ts + 0.1), ts)
     ts = np.where(np.isnan(gran) & np.isnan(tall), np.nan, ts)
     avv = d["ar_sedan_avverkning"]
     al = np.where(avv < 30, np.where(avv < 10, 0.0, 0.3), _ramp(d["tradhojd"], 5, 15))
     f = {"tradslag": ts, "alder": al, "jordart": _tabell(d["jordart"], JORDARTER), "fukt": _tabell(d["fukt"], FUKTKLASSER),
-         "hojd": _ramp(d["hojd"], 900, 700)}
+         "hojd": _ramp(d["hojd"], HOJD_NOLL, HOJD_FULL)}
     summa = sum(np.nan_to_num(f[k]) * VIKTER[k] for k in f)
     vikt = sum(np.where(np.isnan(f[k]), 0.0, VIKTER[k]) for k in f)
     medel = summa / vikt
