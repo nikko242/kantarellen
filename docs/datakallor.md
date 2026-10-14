@@ -276,3 +276,18 @@ Inget av detta behövs för de rekommenderade vägarna.
 **Tätort (DO-9 i Saida):** andelen bebyggd mark (51, 52 och 53, alltså hus, anlagd mark och vägar) räknas per ruta och medelvärdesbildas över 250 × 250 m. En ruta där minst 20 % av marken är bebyggd räknas inte som skog. Valet prövades kring Östersund: utan vägarna blev tätorten 12,6 km², eftersom villaområdena nästan bara har hus och gator (Torvalla: 19 % hus och anlagd mark), och med vägarna 28,6 km², nära SCB:s tätortsyta. En skogsbilväg utan hus ger högst omkring 15 % (99:e percentilen), och ett ensamt hus gör ingen tätort.
 
 **Kartdatan** blir för stor för en enda bild: den delas i tiles (zoom 5–11) och blocken komprimeras med gzip. Se README.
+
+
+## Varv 4: Södermanlands län
+
+Kartan visar Södermanlands län (länskod `04`) utöver Jämtlands län. Länen räknas var för sig med samma källor och regler (`kantarell/kallor.py: LAN`) och läggs i samma kartdata.
+
+| Källa | Väg för Södermanland | Storlek |
+|---|---|---|
+| Gräns | OpenStreetMap, relationen 54386 (Södermanlands län) | ≈ 1 MB |
+| Trädslag, trädhöjd, höjd | Som för Jämtland, läst direkt för länets yta | läses direkt |
+| Avverkningar | Skogsstyrelsens tjänst, `Lannr='04'` (34 080 ytor 2026-10-14; `Lannr='4'` ger inget) | ≈ 170 anrop |
+| Markfuktighet | Länsfilen `sksSLUMarkfuktighet_klassad04.zip`, uppackad i `data/raw/markfuktighet/` | 69 MB zip, 104 MB tif |
+| Jordarter, bebyggd mark | Samma rikstäckande filer som för Jämtland (SGU:s GeoPackage och NMD 2023) | redan nedladdade |
+
+**Rutnätet** gäller nu hela landet: origo `0, 7 700 000` i SWEREF99 TM, och ett läns rutnät har kanterna på jämna block (5 km). Blocken heter efter sin plats i landets rutnät, så grannlän kan dela block. Jämtlands cache från varv 2 flyttades in i det nya rutnätet utan att hämtas igen.

@@ -9,9 +9,64 @@ from kantarell.rutnat import BLOCK, FALT, Rutnat, avkoda_ruta, koda_block
 
 
 def test_rutnatet_ligger_pa_jamna_50_m():
-    n = Rutnat.kring(476012, 7002031, 476490, 7002470)
+    n = Rutnat.kring(476012, 7002031, 476490, 7002470, steg=50)
     assert n.x0 == 476000 and n.y0 == 7002500
     assert n.bredd == 10 and n.hojd == 10
+
+
+def test_lanets_rutnat_ligger_pa_landets_block():
+    n = Rutnat.kring(476012, 7002031, 476490, 7002470)
+    assert n.x0 == 475000 and n.y0 == 7005000
+    assert n.bredd == BLOCK and n.hojd == BLOCK
+    # Blocken heter efter sin plats i landets rutnät, oavsett län
+    assert n.block0 == (95, (7_700_000 - 7_005_000) // 5000)
+    assert [b[:2] for b in n.block()] == [n.block0]
+
+
+def test_tva_lan_i_samma_kartdata_med_var_sin_skala(tmp_path):
+    from kantarell.forberakna import borja, skriv_meta, skriv_omrade
+    a = Rutnat.kring(476000, 7002000, 481000, 7007000)
+    b = Rutnat.kring(600000, 6550000, 605000, 6555000)
+    da, db = demodata(a), demodata(b)
+    db["hojd"] = db["hojd"] + 500        # ett sämre län: högre upp, alltså lägre poäng
+    borja(tmp_path)
+    omr = {"23": {"namn": "Län A", **skriv_omrade(a, berakna(a, da, lannr="23"), tmp_path)},
+           "04": {"namn": "Län B", **skriv_omrade(b, berakna(b, db, lannr="04"), tmp_path)}}
+    meta = skriv_meta(omr, [], tmp_path)
+    assert meta["omrade"] == "Län A och Län B"
+    assert set(meta["lan"]) == {"23", "04"}
+    # Varje län rangordnas för sig: skalan i det sämre länet ligger lägre
+    assert meta["lan"]["04"]["skala"]["poang"][-1] < meta["lan"]["23"]["skala"]["poang"][-1]
+    assert meta["statistik"]["skogsrutor"] == meta["lan"]["23"]["skogsrutor"] + meta["lan"]["04"]["skogsrutor"]
+    # Blocken från båda länen finns, och rutorna bär sin länskod
+    n = meta["rutnat"]
+    assert (n["x0"], n["y0"]) == (0, 7_700_000)
+    for nat, kod in ((a, 23), (b, 4)):
+        bx, by = nat.block0
+        data = gzip.decompress((tmp_path / "block" / f"{bx}_{by}.bin.gz").read_bytes())
+        assert avkoda_ruta(data, 0)["lan"] == kod
+    # Båda länen ger guld (de bästa 10 % i länet) i sina tiles
+    from kantarell.forberakna import _las_png
+    guld = {kod: 0 for kod in ("23", "04")}
+    mitt = (meta["lan"]["23"]["bounds"][2] + meta["lan"]["04"]["bounds"][0]) / 2
+    grans = (mitt + 180) / 360 * 2 ** 11
+    for p in (tmp_path / "tiles" / "11").rglob("*.png"):
+        t = _las_png(p.read_bytes())
+        ost = int(p.parent.name) > grans      # län B ligger österut
+        guld["04" if ost else "23"] += int(((t[..., 0] == 255) & (t[..., 3] > 0)).sum())
+    assert guld["23"] > 0 and guld["04"] > 0
+
+
+def test_grannlan_i_samma_block_slas_ihop(tmp_path):
+    from kantarell.forberakna import borja, skriv_omrade
+    n = Rutnat.kring(476000, 7002000, 481000, 7007000)
+    vast = np.zeros((n.hojd, n.bredd), dtype=bool)
+    vast[:, :50] = True
+    borja(tmp_path)
+    skriv_omrade(n, berakna(n, demodata(n), vast, "23"), tmp_path)
+    skriv_omrade(n, berakna(n, demodata(n), ~vast, "04"), tmp_path)
+    data = gzip.decompress((tmp_path / "block" / ("%d_%d.bin.gz" % n.block0)).read_bytes())
+    assert avkoda_ruta(data, 10)["lan"] == 23 and avkoda_ruta(data, 60)["lan"] == 4
 
 
 def test_kodning_och_avkodning_av_en_ruta():

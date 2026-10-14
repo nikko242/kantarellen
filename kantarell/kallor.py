@@ -1,8 +1,9 @@
-"""De öppna källorna för Jämtlands län, lagda på rutnätet om 50 m (se docs/datakallor.md).
+"""De öppna källorna för kartans län, lagda på rutnätet om 50 m (se docs/datakallor.md).
 
-Varje källa hämtas en gång och sparas i data/raw (checkas inte in). Rasterkällor på servrar läses direkt för länets yta
-(GDAL /vsicurl/), i band och parallellt; stora filer som bara finns som nedladdning (markfuktigheten, NMD, SGU:s
-jordarter) läses lokalt. Vektorkällor rastreras. Resultatet per källa sparas som data/raw/lan23/rutnat_<namn>.npy.
+Varje län räknas för sig (LAN). Varje källa hämtas en gång och sparas i data/raw (checkas inte in). Rasterkällor på
+servrar läses direkt för länets yta (GDAL /vsicurl/), i band och parallellt; stora filer som bara finns som nedladdning
+(markfuktigheten, NMD, SGU:s jordarter) läses lokalt. Vektorkällor rastreras. Resultatet per källa sparas som
+data/raw/lan<nr>/rutnat_<namn>.npy, och rutnätet de gäller för i data/raw/lan<nr>/rutnat.json.
 """
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import logging
 import time
 import zipfile
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,10 +23,21 @@ from .rutnat import RUTA_M, Rutnat
 
 log = logging.getLogger("kantarell.kallor")
 RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
-OMRADE = "Jämtlands län"
-LANNR = "23"
-OSM_RELATION = 52826
-CACHE = RAW / f"lan{LANNR}"
+
+
+@dataclass(frozen=True)
+class Lan:
+    nr: str          # länskoden, t.ex. "23" (Skogsstyrelsens länsfiler och avverkningarnas Lannr)
+    namn: str
+    osm: int         # relationen i OpenStreetMap
+
+    @property
+    def cache(self) -> Path:
+        return RAW / f"lan{self.nr}"
+
+
+# Kartans län (Saida: VE-3). Södermanland kom med i varv 4 (KS-11).
+LAN = {l.nr: l for l in (Lan("23", "Jämtlands län", 52826), Lan("04", "Södermanlands län", 54386))}
 # GDAL läser bara de delar av fjärrfilerna som behövs
 GDAL_ENV = {"GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR", "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif", "GDAL_HTTP_MULTIRANGE": "YES",
             "GDAL_HTTP_MERGE_CONSECUTIVE_RANGES": "YES", "VSI_CACHE": "TRUE", "VSI_CACHE_SIZE": "200000000",
@@ -33,8 +46,8 @@ IDAG = time.strftime("%Y-%m-%d")
 BAND = 500   # rader i rutnätet per band när stora raster läses (25 km)
 
 KALLOR = {
-    "gransen": {"namn": "Länsgränsen (OpenStreetMap)", "vad": "länets yta", "licens": "ODbL, © OpenStreetMap contributors",
-                "url": f"https://www.openstreetmap.org/relation/{OSM_RELATION}"},
+    "gransen": {"namn": "Länsgränserna (OpenStreetMap)", "vad": "länens yta", "licens": "ODbL, © OpenStreetMap contributors",
+                "url": "https://www.openstreetmap.org/relation/{osm}"},
     "tradslag": {"namn": "SLU Skogskarta, trädslag", "vad": "gran, tall och björk (andel av volymen, 12,5 m)", "licens": "öppet och fritt (SLU), ange källan",
                  "url": "https://gis.slu.se/data/slu_forest_map/2018/data/"},
     "tradhojd": {"namn": "SLU Skogliga grunddata, medelhöjd (SGD2)", "vad": "trädhöjd, 10 m", "licens": "öppet och fritt (SLU), ange källan",
@@ -42,7 +55,7 @@ KALLOR = {
     "avverkning": {"namn": "Skogsstyrelsen, utförda avverkningar", "vad": "avverkade ytor med datum", "licens": "CC0",
                    "url": "https://geodpags.skogsstyrelsen.se/arcgis/rest/services/Geodataportal/GeodataportalVisaUtfordavverkning/MapServer/1"},
     "fukt": {"namn": "SLU markfuktighetskarta, klassad (Skogsstyrelsen)", "vad": "markfuktighet, 2 m (klasserna tolkade: torr–frisk, frisk–fuktig, blöt, vatten)", "licens": "CC0",
-             "url": "https://geodpags.skogsstyrelsen.se/geodataport/data/sksSLUMarkfuktighet_klassad23.zip"},
+             "url": "https://geodpags.skogsstyrelsen.se/geodataport/data/sksSLUMarkfuktighet_klassad{nr}.zip"},
     "jordart": {"namn": "SGU jordarter 1:25 000–1:100 000", "vad": "jordart", "licens": "CC0",
                 "url": "https://resource.sgu.se/data/oppnadata/jordarter25k-100k/jordarter25k-100k.zip"},
     "hojd": {"namn": "Copernicus DEM GLO-30", "vad": "höjd över havet, 30 m (ytmodell)",
@@ -53,8 +66,8 @@ KALLOR = {
 }
 
 
-def _cache(namn: str, nat: Rutnat, hamta) -> np.ndarray:
-    p = CACHE / f"rutnat_{namn}.npy"
+def _cache(namn: str, nat: Rutnat, lan: Lan, hamta) -> np.ndarray:
+    p = lan.cache / f"rutnat_{namn}.npy"
     if p.exists():
         a = np.load(p)
         if a.shape == (nat.hojd, nat.bredd):
@@ -147,23 +160,23 @@ def _innanfor_bild(src, nat: Rutnat, upplosning: float):
 
 # ---------- Källorna ----------
 
-def gransen():
+def gransen(lan: Lan):
     import geopandas as gpd
-    p = CACHE / "gransen.geojson"
+    p = lan.cache / "gransen.geojson"
     if not p.exists():
-        r = requests.get(f"https://polygons.openstreetmap.fr/get_geojson.py?id={OSM_RELATION}&params=0", timeout=120)
+        r = requests.get(f"https://polygons.openstreetmap.fr/get_geojson.py?id={lan.osm}&params=0", timeout=120)
         r.raise_for_status()
         p.write_bytes(r.content)
     g = gpd.read_file(p).to_crs("EPSG:3006")
     return g.union_all()
 
 
-def tradslag(nat: Rutnat) -> dict[str, np.ndarray]:
+def tradslag(nat: Rutnat, lan: Lan) -> dict[str, np.ndarray]:
     from rasterio.enums import Resampling
     bas = "/vsicurl/https://gis.slu.se/data/slu_forest_map/2018/data/"
     ut = {}
     for namn, fil in (("gran", "Gran_andel.tif"), ("tall", "Tall_andel_fixad.tif"), ("bjork", "Bjork_andel.tif")):
-        ut[namn] = _cache(namn, nat, lambda fil=fil: _raster(bas + fil, nat, Resampling.average, src_nodata=-1))
+        ut[namn] = _cache(namn, nat, lan, lambda fil=fil: _raster(bas + fil, nat, Resampling.average, src_nodata=-1))
     # Där inget trädslag har volym är det inte skog
     ingen = np.nansum(np.stack([ut["gran"], ut["tall"], ut["bjork"]]), axis=0) < 1
     for k in ut:
@@ -171,23 +184,23 @@ def tradslag(nat: Rutnat) -> dict[str, np.ndarray]:
     return ut
 
 
-def tradhojd(nat: Rutnat) -> np.ndarray:
+def tradhojd(nat: Rutnat, lan: Lan) -> np.ndarray:
     from rasterio.enums import Resampling
     def h():
         dm = _raster("/vsicurl/" + KALLOR["tradhojd"]["url"], nat, Resampling.average, src_nodata=-1)
         return np.where(dm < 30, np.where(np.isnan(dm), np.nan, 1.5), dm / 10)   # under 3 m anges som 0
-    return _cache("tradhojd", nat, h)
+    return _cache("tradhojd", nat, lan, h)
 
 
-def avverkning(nat: Rutnat) -> np.ndarray:
+def avverkning(nat: Rutnat, lan: Lan) -> np.ndarray:
     """År sedan senaste slutavverkning (NaN = ingen känd)."""
 
     def h():
-        p = CACHE / "avverkningar.geojson"
+        p = lan.cache / "avverkningar.geojson"
         if not p.exists():
             # Tjänsten svarar 500 på stora sidor, offset och okända fält: hämta id:n först, sedan små omgångar
             url = KALLOR["avverkning"]["url"] + "/query"
-            ids = _get(url, {"where": f"Lannr='{LANNR}'", "returnIdsOnly": "true", "f": "json"})["objectIds"]
+            ids = _get(url, {"where": f"Lannr='{lan.nr}'", "returnIdsOnly": "true", "f": "json"})["objectIds"]
             delar = [ids[i:i + 200] for i in range(0, len(ids), 200)]
             feats = []
             with ThreadPoolExecutor(4) as ex:
@@ -209,7 +222,7 @@ def avverkning(nat: Rutnat) -> np.ndarray:
             rader.append(((nu - dt).days / 365.25, geom))
         rader.sort(key=lambda r: -r[0])   # äldst först, så att den senaste avverkningen skriver sist
         return _rastrera(((g, round(a)) for a, g in rader), nat)
-    return _cache("avverkning", nat, h)
+    return _cache("avverkning", nat, lan, h)
 
 
 def _fukt_band(args) -> np.ndarray:
@@ -227,21 +240,21 @@ def _fukt_band(args) -> np.ndarray:
     return vanligast
 
 
-def fukt(nat: Rutnat) -> np.ndarray:
+def fukt(nat: Rutnat, lan: Lan) -> np.ndarray:
     """Klassad markfuktighet (dominerande klass i rutan) → våra klasser i kantarell/poang.py.
 
     SLU:s klassade karta: 1 torr–frisk, 2 frisk–fuktig, 3 blöt, 4 vatten, 7 saknas. Tolkningen bygger på stickprov
     (Storsjön ger 4, en myr 3, tätorten 1); torr hällmark skiljs inte ut, så 1 räknas som frisk.
     """
     def h():
-        tif = next((RAW / "markfuktighet").rglob("*.tif"))
+        tif = next((RAW / "markfuktighet").rglob(f"*klassad{lan.nr}.tif"))
         band = list(_band(nat, 100))   # 2 m: ett band om 100 rader är 2 500 × 130 000 pixlar
         klass = np.full((nat.hojd, nat.bredd), np.nan, dtype=np.float32)
         with ProcessPoolExecutor(8) as ex:
             for (r0, n, _), a in zip(band, ex.map(_fukt_band, [(str(tif), b[2]) for b in band])):
                 klass[r0:r0 + n] = a
         return np.select([klass == 1, klass == 2, klass == 3], [2, 3, 4], np.nan)   # 4 (vatten) och 7 blir NaN
-    return _cache("fukt", nat, h)
+    return _cache("fukt", nat, lan, h)
 
 
 # NMD:s klasser för bebyggd mark (klasstabellen i NMD2023bas_v2_1.tif.vat.dbf): 51 Byggnad, 52 Anlagd mark (ej byggnad
@@ -260,7 +273,7 @@ def _nmd_band(args) -> np.ndarray:
     return np.isin(a, NMD_BEBYGGD).reshape(del_.hojd, steg, del_.bredd, steg).mean(axis=(1, 3)).astype(np.float32)
 
 
-def bebyggd_andel(nat: Rutnat) -> np.ndarray:
+def bebyggd_andel(nat: Rutnat, lan: Lan) -> np.ndarray:
     """Andel bebyggd mark per ruta enligt NMD 2023 (0–1)."""
     def h():
         tif = _packa_upp("NMD2023_basskikt_v2_1.zip", ".tif")
@@ -270,7 +283,7 @@ def bebyggd_andel(nat: Rutnat) -> np.ndarray:
             for (r0, n, _), a in zip(band, ex.map(_nmd_band, [(str(tif), b[2]) for b in band])):
                 ut[r0:r0 + n] = a
         return ut
-    return _cache("bebyggd", nat, h)
+    return _cache("bebyggd", nat, lan, h)
 
 
 def _lada(a: np.ndarray, r: int) -> np.ndarray:
@@ -318,7 +331,7 @@ def jordartsgrupp(text: str) -> float:
     return 8
 
 
-def jordart(nat: Rutnat) -> np.ndarray:
+def jordart(nat: Rutnat, lan: Lan) -> np.ndarray:
     def h():
         import pyogrio
         gpkg = _packa_upp("jordarter25k-100k.zip", ".gpkg")
@@ -328,10 +341,10 @@ def jordart(nat: Rutnat) -> np.ndarray:
         grupp = g["jg2_tx"].map(jordartsgrupp)
         ok = grupp.notna() & g.geometry.notna()
         return _rastrera(zip(g.geometry[ok], grupp[ok]), nat)
-    return _cache("jordart", nat, h)
+    return _cache("jordart", nat, lan, h)
 
 
-def hojd(nat: Rutnat) -> np.ndarray:
+def hojd(nat: Rutnat, lan: Lan) -> np.ndarray:
     from pyproj import Transformer
     from rasterio.enums import Resampling
 
@@ -350,7 +363,7 @@ def hojd(nat: Rutnat) -> np.ndarray:
                     continue
                 ut = np.fmax(ut, a)
         return ut
-    return _cache("hojd", nat, h)
+    return _cache("hojd", nat, lan, h)
 
 
 def arSkog(data: dict[str, np.ndarray]) -> np.ndarray:
@@ -364,26 +377,66 @@ def arSkog(data: dict[str, np.ndarray]) -> np.ndarray:
     return (hog | avverkad) & ~vatten & ~tatort_
 
 
-def hamta():
-    """Rutnät, källdata, källornas beskrivning och länets yta på rutnätet."""
+def kallor(lanen: list[Lan]) -> list[dict]:
+    """Källornas beskrivning för appen; länsfilerna och länsgränserna med en adress per län."""
+    ut = []
+    for k in KALLOR.values():
+        k = {**k, "datum": IDAG}
+        if "{" in k["url"]:
+            adresser = [k["url"].format(nr=l.nr, osm=l.osm) for l in lanen]
+            k["url"] = adresser[0]
+            if len(adresser) > 1:
+                k["not"] = "En per län: " + ", ".join(f"{l.namn} {a.rsplit('/', 1)[-1]}" for l, a in zip(lanen, adresser))
+        ut.append(k)
+    return ut
+
+
+def _rutnat_for_cachen(lan: Lan, yta, nat: Rutnat) -> None:
+    """Se till att cachen gäller rutnätet. Före varv 4 låg länets rutnät på jämna 50 m kring länet; de filerna flyttas
+    in i det nya (större) rutnätet i stället för att hämtas igen. Cache för ett annat rutnät tas bort."""
+    info = lan.cache / "rutnat.json"
+    nu = {"x0": nat.x0, "y0": nat.y0, "bredd": nat.bredd, "hojd": nat.hojd}
+    filer = list(lan.cache.glob("rutnat_*.npy"))
+    if info.exists():
+        if json.loads(info.read_text(encoding="utf-8")) != nu:
+            log.warning("%s: cachen gäller ett annat rutnät och räknas om", lan.namn)
+            for f in filer:
+                f.unlink()
+    elif filer:
+        gammal = Rutnat.kring(*yta.bounds, steg=RUTA_M)
+        dx, dy = round((gammal.x0 - nat.x0) / RUTA_M), round((nat.y0 - gammal.y0) / RUTA_M)
+        for f in filer:
+            a = np.load(f)
+            if a.shape != (gammal.hojd, gammal.bredd) or dx < 0 or dy < 0:
+                f.unlink()
+                continue
+            ny = np.full((nat.hojd, nat.bredd), np.nan, dtype=a.dtype)
+            ny[dy:dy + a.shape[0], dx:dx + a.shape[1]] = a
+            np.save(f, ny)
+        log.info("%s: cachen flyttad till landets rutnät", lan.namn)
+    info.write_text(json.dumps(nu), encoding="utf-8")
+
+
+def hamta(lan: Lan):
+    """Rutnät, källdata och länets yta på rutnätet, för ett län."""
     from rasterio.features import rasterize
 
-    CACHE.mkdir(parents=True, exist_ok=True)
-    yta = gransen()
+    lan.cache.mkdir(parents=True, exist_ok=True)
+    yta = gransen(lan)
     nat = Rutnat.kring(*yta.bounds)
-    log.info("%s: %d × %d rutor om 50 m", OMRADE, nat.bredd, nat.hojd)
+    log.info("%s: %d × %d rutor om 50 m", lan.namn, nat.bredd, nat.hojd)
+    _rutnat_for_cachen(lan, yta, nat)
     innanfor = rasterize([(yta, 1)], out_shape=(nat.hojd, nat.bredd), transform=nat.transform, fill=0, dtype="uint8").astype(bool)
-    data = tradslag(nat)
-    data["tradhojd"] = tradhojd(nat)
-    data["ar_sedan_avverkning"] = avverkning(nat)
-    data["jordart"] = jordart(nat)
-    data["hojd"] = hojd(nat)
-    data["fukt"] = fukt(nat)
-    data["tatort"] = tatort(bebyggd_andel(nat))
+    data = tradslag(nat, lan)
+    data["tradhojd"] = tradhojd(nat, lan)
+    data["ar_sedan_avverkning"] = avverkning(nat, lan)
+    data["jordart"] = jordart(nat, lan)
+    data["hojd"] = hojd(nat, lan)
+    data["fukt"] = fukt(nat, lan)
+    data["tatort"] = tatort(bebyggd_andel(nat, lan))
     log.info("tätort: %.1f %% av länets rutor", 100 * float(data["tatort"][innanfor].mean()))
     skog = arSkog(data)
     log.info("skog: %.0f %% av länets rutor", 100 * float(skog[innanfor].mean()))
     for f in ("gran", "tall", "bjork"):
         data[f] = np.where(skog, data[f], np.nan)
-    kallor = [{**k, "datum": IDAG} for k in KALLOR.values()]
-    return nat, data, kallor, innanfor
+    return nat, data, innanfor
