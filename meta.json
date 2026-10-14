@@ -1,0 +1,136 @@
+{
+ "skapad": "2026-10-14 16:16",
+ "omrade": "Jämtlands län och Södermanlands län",
+ "rutnat": {
+  "crs": "EPSG:3006",
+  "x0": 0.0,
+  "y0": 7700000.0,
+  "bredd": 13500,
+  "hojd": 24500,
+  "ruta_m": 50,
+  "block": 100
+ },
+ "tiles": {
+  "url": "data/tiles/{z}/{x}/{y}.png",
+  "minzoom": 5,
+  "maxzoom": 11,
+  "bounds": [
+   11.698065413282245,
+   58.38079271179798,
+   18.095937599679,
+   65.14845431830338
+  ]
+ },
+ "lan": {
+  "23": {
+   "namn": "Jämtlands län",
+   "bounds": [
+    11.698065413282245,
+    61.527392067538905,
+    17.238016491395967,
+    65.14845431830338
+   ],
+   "skala": {
+    "percentiler": [
+     50,
+     75,
+     90
+    ],
+    "poang": [
+     0.67,
+     0.825,
+     0.931
+    ]
+   },
+   "skogsrutor": 14621228
+  },
+  "04": {
+   "namn": "Södermanlands län",
+   "bounds": [
+    15.599065262088054,
+    58.38079271179798,
+    18.095937599679,
+    59.58178274118507
+   ],
+   "skala": {
+    "percentiler": [
+     50,
+     75,
+     90
+    ],
+    "poang": [
+     0.556,
+     0.683,
+     0.794
+    ]
+   },
+   "skogsrutor": 1793495
+  }
+ },
+ "kallor": [
+  {
+   "namn": "Länsgränserna (OpenStreetMap)",
+   "vad": "länens yta",
+   "licens": "ODbL, © OpenStreetMap contributors",
+   "url": "https://www.openstreetmap.org/relation/52826",
+   "datum": "2026-10-14",
+   "not": "En per län: Jämtlands län 52826, Södermanlands län 54386"
+  },
+  {
+   "namn": "SLU Skogskarta, trädslag",
+   "vad": "gran, tall och björk (andel av volymen, 12,5 m)",
+   "licens": "öppet och fritt (SLU), ange källan",
+   "url": "https://gis.slu.se/data/slu_forest_map/2018/data/",
+   "datum": "2026-10-14"
+  },
+  {
+   "namn": "SLU Skogliga grunddata, medelhöjd (SGD2)",
+   "vad": "trädhöjd, 10 m",
+   "licens": "öppet och fritt (SLU), ange källan",
+   "url": "https://gis.slu.se/data/slu_skogliga_grunddata/SGD2/data/SGD2_HGV.tif",
+   "datum": "2026-10-14"
+  },
+  {
+   "namn": "Skogsstyrelsen, utförda avverkningar",
+   "vad": "avverkade ytor med datum",
+   "licens": "CC0",
+   "url": "https://geodpags.skogsstyrelsen.se/arcgis/rest/services/Geodataportal/GeodataportalVisaUtfordavverkning/MapServer/1",
+   "datum": "2026-10-14"
+  },
+  {
+   "namn": "SLU markfuktighetskarta, klassad (Skogsstyrelsen)",
+   "vad": "markfuktighet, 2 m (klasserna tolkade: torr–frisk, frisk–fuktig, blöt, vatten)",
+   "licens": "CC0",
+   "url": "https://geodpags.skogsstyrelsen.se/geodataport/data/sksSLUMarkfuktighet_klassad23.zip",
+   "datum": "2026-10-14",
+   "not": "En per län: Jämtlands län sksSLUMarkfuktighet_klassad23.zip, Södermanlands län sksSLUMarkfuktighet_klassad04.zip"
+  },
+  {
+   "namn": "SGU jordarter 1:25 000–1:100 000",
+   "vad": "jordart",
+   "licens": "CC0",
+   "url": "https://resource.sgu.se/data/oppnadata/jordarter25k-100k/jordarter25k-100k.zip",
+   "datum": "2026-10-14"
+  },
+  {
+   "namn": "Copernicus DEM GLO-30",
+   "vad": "höjd över havet, 30 m (ytmodell)",
+   "licens": "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA",
+   "url": "https://copernicus-dem-30m.s3.amazonaws.com/",
+   "datum": "2026-10-14"
+  },
+  {
+   "namn": "Nationella marktäckedata 2023 (NMD, Naturvårdsverket)",
+   "vad": "bebyggd mark, 10 m (för att skilja ut tätorter)",
+   "licens": "CC0, NMD, Naturvårdsverket",
+   "url": "https://geodata.naturvardsverket.se/nedladdning/marktacke/NMD2023/Basskikt_v2_x/NMD2023_basskikt_v2_1.zip",
+   "datum": "2026-10-14"
+  }
+ ],
+ "statistik": {
+  "skogsrutor": 16414723,
+  "block": 2263,
+  "tiles": 1150,
+  "andel_hog": 0.419
+ }
+}
