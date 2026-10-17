@@ -53,3 +53,5 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; padding: 0; ma
 .forklaring td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
 .forklaring .begr { color: #9b3b1a; }
 .forklaring button { margin-top: 8px; width: 100%; padding: 8px; }
+/* Fotoläget: den sämre halvan syns inte (FOTO_ALFA i app.js) */
+.foto .skala i { background: linear-gradient(90deg, rgba(165,158,120,.35) 0%, rgba(215,175,70,.6) 50%, rgba(240,175,20,.8) 80%, rgb(255,196,0) 100%); }
