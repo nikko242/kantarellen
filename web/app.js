@@ -128,6 +128,34 @@ function omKartan() {
 }
 
 // ---------- Kartan ----------
+// Rangen läses ur rött i tilen (120 grått … 255 guld, FARGER i forberakna.py) och blir en ny genomskinlighet
+const ROTT = [120, 165, 215, 240, 255], RANG = [0, 0.5, 0.75, 0.9, 1];
+const FOTO_ALFA = [[0.5, 0], [0.75, 90], [0.9, 150], [1.01, 215]];   // under rang 0,5 syns bara fotot
+
+function rangUrRott(r) {
+  for (let i = 1; i < ROTT.length; i++) {
+    if (r <= ROTT[i]) return RANG[i - 1] + (RANG[i] - RANG[i - 1]) * (r - ROTT[i - 1]) / (ROTT[i] - ROTT[i - 1]);
+  }
+  return 1;
+}
+
+maplibregl.addProtocol('foto', async (params, abort) => {
+  const svar = await fetch(params.url.slice('foto://'.length), { signal: abort.signal });
+  const bild = await createImageBitmap(await svar.blob());
+  const duk = new OffscreenCanvas(bild.width, bild.height);
+  const ctx = duk.getContext('2d');
+  ctx.drawImage(bild, 0, 0);
+  const px = ctx.getImageData(0, 0, duk.width, duk.height);
+  const d = px.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;   // inte skog
+    const r = rangUrRott(d[i]);
+    d[i + 3] = FOTO_ALFA.find(([grans]) => r < grans)[1];
+  }
+  ctx.putImageData(px, 0, 0);
+  return { data: await (await duk.convertToBlob({ type: 'image/png' })).arrayBuffer() };
+});
+
 async function start() {
   meta = await (await fetch('data/meta.json')).json();
   const t = meta.tiles;
@@ -149,6 +177,16 @@ async function start() {
     karta.addSource('poang', { type: 'raster', tiles: [bas + t.url], tileSize: 256, minzoom: t.minzoom, maxzoom: t.maxzoom, bounds: t.bounds });
     // Under vägar och ortnamn, så att kartan går att läsa genom poängen
     const forsta = karta.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+    // Prov: Lantmäteriets ortofoto (Min kartas visningstjänst) under poängen; villkoren för en delad app är inte prövade
+    karta.addSource('ortofoto', {
+      type: 'raster', tileSize: 256, maxzoom: 19,
+      tiles: ['https://minkarta.lantmateriet.se/map/ortofoto/?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Ortofoto_0.5,Ortofoto_0.4,Ortofoto_0.25,Ortofoto_0.16&STYLES=&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg'],
+      attribution: '© Lantmäteriet',
+    });
+    karta.addLayer({ id: 'ortofoto', type: 'raster', source: 'ortofoto', layout: { visibility: 'none' } }, forsta);
+    // Över flygfotot: samma tiles, men den sämre halvan genomskinlig och resten tydligare (fotoTile)
+    karta.addSource('poang-foto', { type: 'raster', tiles: ['foto://' + bas + t.url], tileSize: 256, minzoom: t.minzoom, maxzoom: t.maxzoom, bounds: t.bounds });
+    karta.addLayer({ id: 'poang-foto', type: 'raster', source: 'poang-foto', layout: { visibility: 'none' }, paint: { 'raster-resampling': 'nearest' } }, forsta);
     karta.addLayer({ id: 'poang', type: 'raster', source: 'poang', paint: { 'raster-opacity': 0.7, 'raster-resampling': 'nearest' } }, forsta);
     karta.addSource('fynd', { type: 'geojson', data: fyndSomGeojson() });
     karta.addLayer({ id: 'fynd', type: 'circle', source: 'fynd', paint: { 'circle-radius': 7, 'circle-color': '#e6a91e', 'circle-stroke-color': '#2f3b25', 'circle-stroke-width': 2 } });
@@ -166,6 +204,16 @@ async function start() {
   $('markera').onclick = () => {
     if (minPosition) markera(minPosition);
     else { visaStatus('Ingen position än: tryck på kartan där du hittade svampen'); }
+  };
+  $('bakgrund').onclick = () => {
+    if (!karta.getLayer('ortofoto')) return;   // kartan har inte laddats än
+    const foto = karta.getLayoutProperty('ortofoto', 'visibility') !== 'visible';
+    karta.setLayoutProperty('ortofoto', 'visibility', foto ? 'visible' : 'none');
+    karta.setLayoutProperty('poang-foto', 'visibility', foto ? 'visible' : 'none');
+    karta.setLayoutProperty('poang', 'visibility', foto ? 'none' : 'visible');
+    $('bakgrund').textContent = foto ? 'Karta' : 'Flygfoto';
+    document.body.classList.toggle('foto', foto);
+    $('skala-fran').textContent = foto ? 'Bästa 50 %' : 'Sämst';
   };
   $('lista').onclick = visaLista;
   $('stang-lista').onclick = () => $('fyndlista').close();
