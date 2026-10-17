@@ -37,6 +37,8 @@ jobs:
           ref: kartdata
           path: web/data
       - run: rm -rf web/data/.git
+      # Commiten i adressen till app.js och style.css, så att webbläsaren inte blandar ny index.html med cachad kod (Pages: max-age=600)
+      - run: sed -i -E "s/(app\.js|style\.css)\"/\1?v=${GITHUB_SHA::7}\"/" web/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
